@@ -22,8 +22,8 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const gapSize = Math.PI / 3.4;     // বড় কাটা ফাঁকা জায়গা (~53 degree)
-const yellowSize = Math.PI / 4.2;  // ছোট নীল আর্চ (~43 degree)
+const gapSize = Math.PI / 3.4;     
+const yellowSize = Math.PI / 4.2;  
 
 const whiteSpeed = 0.018; 
 const yellowSpeed = 0.052; 
@@ -284,13 +284,12 @@ function declareWinner(flag) {
     }, 5000);
 }
 
-// 🟡 এই ফাংশনটিই ঠিক করবে হলুদ লাইনটা কতটা চওড়া থাকবে
+// 🟡 এই ফাংশনটি তোমার হলুদ বারটি ঠিক কতটুকু চওড়া থাকবে তা নিয়ন্ত্রণ করবে
 function updateUI() {
   if (els.activeCount && els.progressBar) {
-    // টেক্সট আপডেট (কয়টি ফ্ল্যাগ বাকি আছে)
     els.activeCount.innerText = activeFlags.length;
     
-    // ফ্ল্যাগের শতকরা পরিমাণ বের করে লাইনের Width (চওড়া) সেট করা
+    // ফ্ল্যাগের শতকরা পরিমাণ বের করে লাইনের Width সেট করা
     let percentage = (activeFlags.length / TOTAL_FLAGS) * 100;
     els.progressBar.style.width = percentage + "%";
   }
@@ -404,14 +403,12 @@ function gameLoop() {
       }
   }
 
-  // 1. সাদা রিং
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
-  // 2. 🔵 ছোট নীল নিয়ন আর্চ (Neon Blue Gate)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
