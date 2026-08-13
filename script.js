@@ -15,7 +15,7 @@ const els = {
   timeText2: document.getElementById("timeText2")
 };
 
-let TOTAL_FLAGS = 250;
+let TOTAL_FLAGS = 193; // 🚩 ১৯৩টি ফ্ল্যাগ
 let flags = [];
 let activeFlags = [];
 let deadFlags = [];
@@ -23,8 +23,8 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const gapSize = Math.PI / 4.5;    // ফিক্সড গ্যাপ (~40 degree)
-const yellowSize = Math.PI / 3;   // হলুদ দরজার মাপ (~60 degree)
+const gapSize = Math.PI / 4.5;    
+const yellowSize = Math.PI / 3;   
 
 const whiteSpeed = 0.018; 
 const yellowSpeed = 0.052; 
@@ -34,16 +34,15 @@ let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 45; // ৪৫ সেকেন্ডের রাউন্ড
+let roundDuration = 45; // ⏱️ ৪৫ সেকেন্ডের রাউন্ড
 
 // Web Audio System
 let audioCtx = null;
 let lastSoundTime = 0;
 
-// 🎵 Background Music Engine Variables
 let bgmInterval = null;
 let bgmStep = 0;
-const bgmNotes = [220, 261.63, 293.66, 329.63, 392.00, 440, 523.25, 329.63]; // A Minor Pentatonic Scale
+const bgmNotes = [220, 261.63, 293.66, 329.63, 392.00, 440, 523.25, 329.63]; 
 
 function unlockAudio() {
   if (!audioCtx) {
@@ -54,7 +53,7 @@ function unlockAudio() {
   }
 }
 
-// 🎶 Background Music Loop (ASMR Chill Synth)
+// 🎶 Background Music Loop
 function startBGM() {
   stopBGM();
   bgmStep = 0;
@@ -70,7 +69,6 @@ function startBGM() {
       osc.type = "sine";
       osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
       
-      // খুব মায়াবী ও সফট ভলিউম
       gain.gain.setValueAtTime(0.012, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.38);
       
@@ -80,7 +78,7 @@ function startBGM() {
       osc.start();
       osc.stop(audioCtx.currentTime + 0.4);
     } catch (e) {}
-  }, 220); // ২০০ মিলিসেকেন্ড পরপর বিট বাজবে
+  }, 220); 
 }
 
 function stopBGM() {
@@ -90,7 +88,7 @@ function stopBGM() {
   }
 }
 
-// 🎧 ASMR Sound Synthesizer Engine
+// 🎧 ASMR Sound Engine
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -111,7 +109,7 @@ function playSound(type, intensity = 1) {
       osc.frequency.setValueAtTime(basePitch, audioCtx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(55, audioCtx.currentTime + 0.035);
       
-      const vol = Math.min(0.06, 0.015 + intensity * 0.008);
+      const vol = Math.min(0.07, 0.015 + intensity * 0.008);
       gain.gain.setValueAtTime(vol, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
       
@@ -138,7 +136,7 @@ function playSound(type, intensity = 1) {
       osc.stop(audioCtx.currentTime + 0.13);
 
     } else if (type === "win") {
-      stopBGM(); // উইনার স্ক্রিনে বিজিএম সাময়িকভাবে অফ হয়ে চিম বাজবে
+      stopBGM(); 
       const freqs = [523.25, 659.25, 783.99, 1046.50];
       freqs.forEach((freq, idx) => {
         const osc = audioCtx.createOscillator();
@@ -171,14 +169,17 @@ function speakWinner(name) {
   }
 }
 
-// ২৫০টি পতাকার ডাটা
+// ১৯৩টি দেশের পতাকার ডাটা
 const countryList = [
   ["IN","India","🇮🇳"], ["US","United States","🇺🇸"], ["GB","United Kingdom","🇬🇧"], 
   ["BD","Bangladesh","🇧🇩"], ["CM","Cameroon","🇨🇲"], ["BF","Burkina Faso","🇧🇫"],
   ["SC","Seychelles","🇸🇨"], ["MW","Malawi","🇲🇼"], ["SZ","Eswatini","🇸🇿"],
   ["BR","Brazil","🇧🇷"], ["AR","Argentina","🇦🇷"], ["FR","France","🇫🇷"],
   ["DE","Germany","🇩🇪"], ["JP","Japan","🇯🇵"], ["KR","South Korea","🇰🇷"],
-  ["CA","Canada","🇨🇦"], ["AU","Australia","🇦🇺"], ["IT","Italy","🇮🇹"]
+  ["CA","Canada","🇨🇦"], ["AU","Australia","🇦🇺"], ["IT","Italy","🇮🇹"],
+  ["ES","Spain","🇪🇸"], ["PT","Portugal","🇵🇹"], ["RU","Russia","🇷🇺"],
+  ["CN","China","🇨🇳"], ["ZA","South Africa","🇿🇦"], ["MX","Mexico","🇲🇽"],
+  ["EG","Egypt","🇪🇬"], ["NG","Nigeria","🇳🇬"], ["PK","Pakistan","🇵🇰"]
 ];
 while(countryList.length < TOTAL_FLAGS) {
     countryList.push(countryList[Math.floor(Math.random() * countryList.length)]);
@@ -195,7 +196,7 @@ function startGame(mode) {
   
   initGame();
   isPlaying = true;
-  startBGM(); // বিজিএম শুরু
+  startBGM(); 
   requestAnimationFrame(gameLoop);
 }
 
@@ -281,7 +282,7 @@ function declareWinner(flag) {
         document.getElementById("roundText").innerText = round;
         initGame();
         isPlaying = true;
-        startBGM(); // পরবর্তী রাউন্ডের জন্য BGM আবার চালু
+        startBGM(); 
         requestAnimationFrame(gameLoop);
     }, 5000);
 }
@@ -385,22 +386,24 @@ function gameLoop() {
     }
   }
 
-  // Dead Flags Physics
+  // 🧱 Dead Flags Physics (নিচে পড়ে সুন্দরভাবে জমা হওয়া)
   for (let f of deadFlags) {
-      f.vy += 0.35;
-      f.x += f.vx * 0.9;
+      f.vy += 0.35; // Gravity
+      f.x += f.vx * 0.85;
       f.y += f.vy;
       
-      if (f.y >= canvas.height - f.r) {
-          f.y = canvas.height - f.r;
-          f.vy *= -0.25;
-          f.vx *= 0.8;
+      // স্ক্রিনের একদম নিচে সুন্দরভাবে জমা হওয়া
+      const floorY = canvas.height - f.r - 2;
+      if (f.y >= floorY) {
+          f.y = floorY;
+          f.vy *= -0.2; // মৃদু বাউন্স
+          f.vx *= 0.7;  // থামানো
       }
       if (f.x <= f.r) { f.x = f.r; f.vx *= -0.5; }
       if (f.x >= canvas.width - f.r) { f.x = canvas.width - f.r; f.vx *= -0.5; }
   }
 
-  // RENDER RINGS
+  // --- RENDER RINGS ---
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
@@ -416,15 +419,14 @@ function gameLoop() {
   ctx.stroke();
   ctx.shadowBlur = 0; 
 
-  // Dead Flags Render
-  ctx.font = "16px Arial";
+  // 🎨 Dead Flags Render (নিচে ১০০% রঙিন এবং উজ্জ্বল থাকবে)
+  ctx.font = "18px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.globalAlpha = 0.55;
+  ctx.globalAlpha = 1.0; // 👈 ১০০% ফুল কালার
   for (let f of deadFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
-  ctx.globalAlpha = 1.0;
 
   // Active Flags Render
   ctx.font = "22px Arial";
