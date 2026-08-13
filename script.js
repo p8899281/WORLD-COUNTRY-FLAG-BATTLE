@@ -23,7 +23,7 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const gapSize = Math.PI / 4.5;    
+const gapSize = Math.PI / 4.2;    // প্রাকৃতিক সুন্দর গ্যাপ সাইজ
 const yellowSize = Math.PI / 3;   
 
 const whiteSpeed = 0.018; 
@@ -34,7 +34,7 @@ let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 45; // ৪৫ সেকেন্ডের নিখুঁত রাউন্ড
+let roundDuration = 45; // ৪৫ সেকেন্ডের রাউন্ড
 
 // Web Audio System
 let audioCtx = null;
@@ -167,8 +167,8 @@ function initGame() {
     let country = countryList[i];
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
-      x: arenaX + (Math.random() - 0.5) * (arenaR * 0.8),
-      y: arenaY + (Math.random() - 0.5) * (arenaR * 0.8),
+      x: arenaX + (Math.random() - 0.5) * (arenaR * 0.7),
+      y: arenaY + (Math.random() - 0.5) * (arenaR * 0.7),
       vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
       r: 9, active: true
     };
@@ -209,6 +209,7 @@ function eliminate(flag) {
   
   updateUI();
   
+  // প্রাকৃতিকভাবে ১টি ফ্ল্যাগ বাকি থাকলে বিজয়ী ঘোষণা
   if (activeFlags.length === 1) {
       declareWinner(activeFlags[0]);
   } else if (activeFlags.length === 0 && deadFlags.length > 0) {
@@ -217,7 +218,7 @@ function eliminate(flag) {
 }
 
 function declareWinner(flag) {
-    if (!isPlaying && els.winnerOverlay.classList.contains("hidden") === false) return;
+    if (!isPlaying) return;
     isPlaying = false;
     playSound("win");
     speakWinner(flag.name);
@@ -284,28 +285,10 @@ function gameLoop() {
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
   
-  // ⏱️ টাইমার শেষ (45s) কিন্তু একাধিক পতাকা থাকলে ১ জনকে বিজয়ী করার ফিক্স
-  if (timeLeft <= 0 && activeFlags.length > 1) {
-      let winnerIndex = Math.floor(Math.random() * activeFlags.length);
-      let winner = activeFlags[winnerIndex];
-      
-      // বাকিদের আউট করে দেওয়া
-      for (let f of activeFlags) {
-          if (f.id !== winner.id) {
-              f.active = false;
-              deadFlags.push(f);
-              const gridEl = document.getElementById("grid-flag-" + f.id);
-              if (gridEl) gridEl.classList.add("eliminated");
-          }
-      }
-      activeFlags = [winner];
-      updateUI();
-      declareWinner(winner);
-      return;
-  }
-  
   let timeRatio = Math.min(1, elapsed / roundDuration);
-  let speedMult = 1.2 + (timeRatio * 3.2); // সময় পার হওয়ার সাথে সাথে স্পিড বাড়বে
+  
+  // সময় বাড়ার সাথে সাথে প্রাকৃতিক আউটওয়ার্ড ফোর্স
+  let speedMult = 1.3 + Math.pow(timeRatio, 2) * 3.5; 
   
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
   yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
@@ -324,13 +307,13 @@ function gameLoop() {
     let dy = f.y - arenaY;
     let dist = Math.hypot(dx, dy) || 1;
     
-    if (dist < arenaR * 0.5) {
-        f.vx += (dx / dist) * 0.18 * speedMult;
-        f.vy += (dy / dist) * 0.18 * speedMult;
-    }
+    // প্রাকৃতিকভাবে ফ্ল্যাগগুলোকে রিংয়ের দেয়ালের দিকে পুশ করা (যাতে কেউ কেন্দ্রে দাঁড়িয়ে না থাকে)
+    let pushForce = 0.12 + timeRatio * 0.25;
+    f.vx += (dx / dist) * pushForce;
+    f.vy += (dy / dist) * pushForce;
 
-    f.x += f.vx * (speedMult * 0.4);
-    f.y += f.vy * (speedMult * 0.4);
+    f.x += f.vx * (speedMult * 0.35);
+    f.y += f.vy * (speedMult * 0.35);
     
     if (dist > arenaR - f.r) {
       let fAngle = normalizeAngle(Math.atan2(dy, dx));
@@ -343,7 +326,7 @@ function gameLoop() {
           if (inYellow) {
               bounceFlag(f, dx, dy, dist); 
           } else {
-              if (dist > arenaR + 6) { eliminate(f); }
+              if (dist > arenaR + 5) { eliminate(f); } // ফাঁকা দিয়ে প্রাকৃতিকভাবে বাইরে বেরিয়ে যাবে
           }
       } else {
           bounceFlag(f, dx, dy, dist);
