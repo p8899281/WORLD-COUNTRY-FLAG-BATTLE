@@ -34,11 +34,16 @@ let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 45; // ৪৫ সেকেন্ডের নিখুঁত রাউন্ড
+let roundDuration = 45; // ৪৫ সেকেন্ডের রাউন্ড
 
 // Web Audio System
 let audioCtx = null;
 let lastSoundTime = 0;
+
+// 🎵 Background Music Engine Variables
+let bgmInterval = null;
+let bgmStep = 0;
+const bgmNotes = [220, 261.63, 293.66, 329.63, 392.00, 440, 523.25, 329.63]; // A Minor Pentatonic Scale
 
 function unlockAudio() {
   if (!audioCtx) {
@@ -46,6 +51,42 @@ function unlockAudio() {
   }
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
+  }
+}
+
+// 🎶 Background Music Loop (ASMR Chill Synth)
+function startBGM() {
+  stopBGM();
+  bgmStep = 0;
+  bgmInterval = setInterval(() => {
+    if (!audioCtx || !isPlaying) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      const freq = bgmNotes[bgmStep % bgmNotes.length];
+      bgmStep++;
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      
+      // খুব মায়াবী ও সফট ভলিউম
+      gain.gain.setValueAtTime(0.012, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.38);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.4);
+    } catch (e) {}
+  }, 220); // ২০০ মিলিসেকেন্ড পরপর বিট বাজবে
+}
+
+function stopBGM() {
+  if (bgmInterval) {
+    clearInterval(bgmInterval);
+    bgmInterval = null;
   }
 }
 
@@ -58,23 +99,19 @@ function playSound(type, intensity = 1) {
 
   try {
     if (type === "bounce") {
-      // ৩০ms এর থ্রটল যাতে ঘনঘন ধাক্কায় কানের অস্বস্তি না হয়
       if (nowTime - lastSoundTime < 30) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      // মার্বেল বা কাঁচের বল বাউন্সের মতো সোদিং "Wood/Marble Thock"
       const basePitch = 230 + Math.random() * 40 + Math.min(intensity, 3) * 15;
       osc.type = "sine";
       
-      // দ্রুত পিচ ড্রপ দিয়ে "Thock" ফিল তৈরি
       osc.frequency.setValueAtTime(basePitch, audioCtx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(55, audioCtx.currentTime + 0.035);
       
-      // সফট স্মুথ ভলিউম
-      const vol = Math.min(0.07, 0.015 + intensity * 0.008);
+      const vol = Math.min(0.06, 0.015 + intensity * 0.008);
       gain.gain.setValueAtTime(vol, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
       
@@ -84,7 +121,6 @@ function playSound(type, intensity = 1) {
       osc.stop(audioCtx.currentTime + 0.045);
 
     } else if (type === "out") {
-      // ASMR Bubble / Water Drop Pop Sound
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
@@ -93,7 +129,7 @@ function playSound(type, intensity = 1) {
       osc.frequency.exponentialRampToValueAtTime(550, audioCtx.currentTime + 0.04);
       osc.frequency.exponentialRampToValueAtTime(140, audioCtx.currentTime + 0.12);
       
-      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
       
       osc.connect(gain);
@@ -102,7 +138,7 @@ function playSound(type, intensity = 1) {
       osc.stop(audioCtx.currentTime + 0.13);
 
     } else if (type === "win") {
-      // ASMR Calming Ambient Chime (C Major Harmonics - C5, E5, G5, C6)
+      stopBGM(); // উইনার স্ক্রিনে বিজিএম সাময়িকভাবে অফ হয়ে চিম বাজবে
       const freqs = [523.25, 659.25, 783.99, 1046.50];
       freqs.forEach((freq, idx) => {
         const osc = audioCtx.createOscillator();
@@ -112,7 +148,7 @@ function playSound(type, intensity = 1) {
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.08);
         
         gain.gain.setValueAtTime(0.001, audioCtx.currentTime + idx * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.05, audioCtx.currentTime + idx * 0.08 + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.06, audioCtx.currentTime + idx * 0.08 + 0.04);
         gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + idx * 0.08 + 1.2);
         
         osc.connect(gain);
@@ -159,6 +195,7 @@ function startGame(mode) {
   
   initGame();
   isPlaying = true;
+  startBGM(); // বিজিএম শুরু
   requestAnimationFrame(gameLoop);
 }
 
@@ -244,6 +281,7 @@ function declareWinner(flag) {
         document.getElementById("roundText").innerText = round;
         initGame();
         isPlaying = true;
+        startBGM(); // পরবর্তী রাউন্ডের জন্য BGM আবার চালু
         requestAnimationFrame(gameLoop);
     }, 5000);
 }
