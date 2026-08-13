@@ -2,6 +2,7 @@
   --bg-color: #03140b;
   --theme-green: #00ff66;
   --theme-yellow: #ffd23f;
+  --theme-blue: #00d2ff;
   --text-main: #ffffff;
   --board-bg: #062817;
 }
@@ -36,9 +37,15 @@ body.pc-mode #app { max-width: 900px; padding: 20px; border-radius: 12px; border
 .qualifying-text { color: #ff5555; }
 
 .arena-container { position: relative; flex: 1; display: flex; justify-content: center; align-items: center; min-height: 380px; overflow: hidden; }
-canvas { width: 100%; height: 100%; max-height: 620px; object-fit: contain; }
+canvas { width: 100%; height: 100%; max-height: 580px; object-fit: contain; }
 
 .winner-overlay { position: absolute; text-align: center; background: rgba(0,0,0,0.85); inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 15px; z-index: 10; }
 .round-winner-text { color: var(--theme-yellow); font-size: 24px; font-weight: 900; margin-bottom: 10px; text-shadow: 0 0 10px rgba(255,210,63,0.8); }
 .winner-flag-box { font-size: 80px; box-shadow: 0 0 30px rgba(255,255,255,0.3); background: #000; padding: 10px; margin: 10px 0; border-radius: 10px; }
 .winner-name { font-size: 28px; font-weight: bold; margin-top: 15px; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+/* Progress Bar Tracker */
+.progress-section { margin-top: 8px; text-align: center; padding-bottom: 5px; }
+.progress-bar-bg { background: #11281c; height: 6px; border-radius: 3px; width: 85%; margin: 0 auto 6px; overflow: hidden; border: 1px solid rgba(0,210,255,0.2); }
+.progress-bar-fill { background: var(--theme-yellow); height: 100%; width: 100%; transition: 0.2s; }
+.progress-text { font-size: 12px; font-weight: bold; color: #ddd; letter-spacing: 0.5px; }
