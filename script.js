@@ -1,1224 +1,525 @@
-/* constancy checker by soumen
-   Vanilla JS study planner with LocalStorage autosave.
-   Now gated behind Firebase Authentication (Student ID + Password), with
-   live activity sync to Firestore and a hidden Admin Dashboard.
-*/
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const canvas = $("#arena");
+  const ctx = canvas.getContext("2d");
 
-import {
-  watchAuthState,
-  getStudentProfile,
-  registerStudent,
-  loginStudent,
-  logoutStudent,
-  updateStudentActivity,
-  watchAllStudents
-} from "./firebase.js";
+  const els = {
+    stageText: $("#stageText"), roundText: $("#roundText"), activeText: $("#activeText"),
+    announcement: $("#announcement"), overlayStage: $("#overlayStage"), overlayWinner: $("#overlayWinner"),
+    winnerName: $("#winnerName"), winnerFlag: $("#winnerFlag"), flagGrid: $("#flagGrid"),
+    leaderboardList: $("#leaderboardList"), trackerCount: $("#trackerCount"),
+    startBtn: $("#startBtn"), pauseBtn: $("#pauseBtn"), resumeBtn: $("#resumeBtn"), restartBtn: $("#restartBtn"), fsBtn: $("#fsBtn"),
+    autoMode: $("#autoMode"), soundOn: $("#soundOn"), voiceOn: $("#voiceOn"), musicOn: $("#musicOn"),
+    volume: $("#volume"), volumeVal: $("#volumeVal"), speedVal: $("#speedVal"), speedLabel: $("#speedLabel"), autoLabel: $("#autoLabel"),
+    flagCount: $("#flagCount"), battleSpeed: $("#battleSpeed"), collisionIntensity: $("#collisionIntensity"),
+    speedBtns: [...document.querySelectorAll(".speedBtn")]
+  };
 
-const STORAGE_BASE = "constancy_checker_by_soumen_v1";
-const SETTINGS_BASE = "constancy_checker_by_soumen_settings_v1";
+  const COUNTRY_DATA = [
+    ["AF","Afghanistan","🇦🇫"],["AL","Albania","🇦🇱"],["DZ","Algeria","🇩🇿"],["AD","Andorra","🇦🇩"],["AO","Angola","🇦🇴"],
+    ["AR","Argentina","🇦🇷"],["AM","Armenia","🇦🇲"],["AU","Australia","🇦🇺"],["AT","Austria","🇦🇹"],["AZ","Azerbaijan","🇦🇿"],
+    ["BS","Bahamas","🇧🇸"],["BH","Bahrain","🇧🇭"],["BD","Bangladesh","🇧🇩"],["BB","Barbados","🇧🇧"],["BY","Belarus","🇧🇾"],
+    ["BE","Belgium","🇧🇪"],["BZ","Belize","🇧🇿"],["BJ","Benin","🇧🇯"],["BT","Bhutan","🇧🇹"],["BO","Bolivia","🇧🇴"],
+    ["BA","Bosnia and Herzegovina","🇧🇦"],["BW","Botswana","🇧🇼"],["BR","Brazil","🇧🇷"],["BN","Brunei","🇧🇳"],["BG","Bulgaria","🇧🇬"],
+    ["BF","Burkina Faso","🇧🇫"],["BI","Burundi","🇧🇮"],["KH","Cambodia","🇰🇭"],["CM","Cameroon","🇨🇲"],["CA","Canada","🇨🇦"],
+    ["CV","Cape Verde","🇨🇻"],["CF","Central African Republic","🇨🇫"],["TD","Chad","🇹🇩"],["CL","Chile","🇨🇱"],["CN","China","🇨🇳"],
+    ["CO","Colombia","🇨🇴"],["KM","Comoros","🇰🇲"],["CR","Costa Rica","🇨🇷"],["HR","Croatia","🇭🇷"],["CU","Cuba","🇨🇺"],
+    ["CY","Cyprus","🇨🇾"],["CZ","Czechia","🇨🇿"],["DK","Denmark","🇩🇰"],["DJ","Djibouti","🇩🇯"],["DM","Dominica","🇩🇲"],
+    ["DO","Dominican Republic","🇩🇴"],["EC","Ecuador","🇪🇨"],["EG","Egypt","🇪🇬"],["SV","El Salvador","🇸🇻"],["GQ","Equatorial Guinea","🇬🇶"],
+    ["ER","Eritrea","🇪🇷"],["EE","Estonia","🇪🇪"],["ET","Ethiopia","🇪🇹"],["FJ","Fiji","🇫🇯"],["FI","Finland","🇫🇮"],
+    ["FR","France","🇫🇷"],["GA","Gabon","🇬🇦"],["GM","Gambia","🇬🇲"],["GE","Georgia","🇬🇪"],["DE","Germany","🇩🇪"],
+    ["GH","Ghana","🇬🇭"],["GR","Greece","🇬🇷"],["GT","Guatemala","🇬🇹"],["GN","Guinea","🇬🇳"],["GW","Guinea-Bissau","🇬🇼"],
+    ["GY","Guyana","🇬🇾"],["HT","Haiti","🇭🇹"],["HN","Honduras","🇭🇳"],["HU","Hungary","🇭🇺"],["IS","Iceland","🇮🇸"],
+    ["IN","India","🇮🇳"],["ID","Indonesia","🇮🇩"],["IR","Iran","🇮🇷"],["IQ","Iraq","🇮🇶"],["IE","Ireland","🇮🇪"],
+    ["IL","Israel","🇮🇱"],["IT","Italy","🇮🇹"],["JM","Jamaica","🇯🇲"],["JP","Japan","🇯🇵"],["JO","Jordan","🇯🇴"],
+    ["KZ","Kazakhstan","🇰🇿"],["KE","Kenya","🇰🇪"],["KI","Kiribati","🇰🇮"],["KW","Kuwait","🇰🇼"],["KG","Kyrgyzstan","🇰🇬"],
+    ["LA","Laos","🇱🇦"],["LV","Latvia","🇱🇻"],["LB","Lebanon","🇱🇧"],["LS","Lesotho","🇱🇸"],["LR","Liberia","🇱🇷"],
+    ["LY","Libya","🇱🇾"],["LT","Lithuania","🇱🇹"],["LU","Luxembourg","🇱🇺"],["MG","Madagascar","🇲🇬"],["MW","Malawi","🇲🇼"],
+    ["MY","Malaysia","🇲🇾"],["MV","Maldives","🇲🇻"],["ML","Mali","🇲🇱"],["MT","Malta","🇲🇹"],["MR","Mauritania","🇲🇷"],
+    ["MU","Mauritius","🇲🇺"],["MX","Mexico","🇲🇽"],["MD","Moldova","🇲🇩"],["MC","Monaco","🇲🇨"],["MN","Mongolia","🇲🇳"],
+    ["ME","Montenegro","🇲🇪"],["MA","Morocco","🇲🇦"],["MZ","Mozambique","🇲🇿"],["MM","Myanmar","🇲🇲"],["NA","Namibia","🇳🇦"],
+    ["NP","Nepal","🇳🇵"],["NL","Netherlands","🇳🇱"],["NZ","New Zealand","🇳🇿"],["NI","Nicaragua","🇳🇮"],["NE","Niger","🇳🇪"],
+    ["NG","Nigeria","🇳🇬"],["KP","North Korea","🇰🇵"],["MK","North Macedonia","🇲🇰"],["NO","Norway","🇳🇴"],["OM","Oman","🇴🇲"],
+    ["PK","Pakistan","🇵🇰"],["PA","Panama","🇵🇦"],["PG","Papua New Guinea","🇵🇬"],["PY","Paraguay","🇵🇾"],["PE","Peru","🇵🇪"],
+    ["PH","Philippines","🇵🇭"],["PL","Poland","🇵🇱"],["PT","Portugal","🇵🇹"],["QA","Qatar","🇶🇦"],["RO","Romania","🇷🇴"],
+    ["RU","Russia","🇷🇺"],["RW","Rwanda","🇷🇼"],["SA","Saudi Arabia","🇸🇦"],["SN","Senegal","🇸🇳"],["RS","Serbia","🇷🇸"],
+    ["SC","Seychelles","🇸🇨"],["SL","Sierra Leone","🇸🇱"],["SG","Singapore","🇸🇬"],["SK","Slovakia","🇸🇰"],["SI","Slovenia","🇸🇮"],
+    ["SB","Solomon Islands","🇸🇧"],["SO","Somalia","🇸🇴"],["ZA","South Africa","🇿🇦"],["KR","South Korea","🇰🇷"],["ES","Spain","🇪🇸"],
+    ["LK","Sri Lanka","🇱🇰"],["SD","Sudan","🇸🇩"],["SR","Suriname","🇸🇷"],["SZ","Eswatini","🇸🇿"],["SE","Sweden","🇸🇪"],
+    ["CH","Switzerland","🇨🇭"],["SY","Syria","🇸🇾"],["TW","Taiwan","🇹🇼"],["TJ","Tajikistan","🇹🇯"],["TZ","Tanzania","🇹🇿"],
+    ["TH","Thailand","🇹🇭"],["TL","Timor-Leste","🇹🇱"],["TG","Togo","🇹🇬"],["TO","Tonga","🇹🇴"],["TT","Trinidad and Tobago","🇹🇹"],
+    ["TN","Tunisia","🇹🇳"],["TR","Turkey","🇹🇷"],["TM","Turkmenistan","🇹🇲"],["UG","Uganda","🇺🇬"],["UA","Ukraine","🇺🇦"],
+    ["AE","United Arab Emirates","🇦🇪"],["GB","United Kingdom","🇬🇧"],["US","United States","🇺🇸"],["UY","Uruguay","🇺🇾"],["UZ","Uzbekistan","🇺🇿"],
+    ["VU","Vanuatu","🇻🇺"],["VE","Venezuela","🇻🇪"],["VN","Vietnam","🇻🇳"],["YE","Yemen","🇾🇪"],["ZM","Zambia","🇿🇲"],["ZW","Zimbabwe","🇿🇼"],
+    ["WS","Samoa","🇼🇸"],["BB","Barbados","🇧🇧"],["PR","Puerto Rico","🇵🇷"],["PS","Palestine","🇵🇸"],["XK","Kosovo","🇽🇰"],
+    ["HK","Hong Kong","🇭🇰"],["MO","Macao","🇲🇴"],["GL","Greenland","🇬🇱"],["FO","Faroe Islands","🇫🇴"],["GI","Gibraltar","🇬🇮"],
+    ["CW","Curaçao","🇨🇼"],["AW","Aruba","🇦🇼"],["BM","Bermuda","🇧🇲"],["KY","Cayman Islands","🇰🇾"],["GG","Guernsey","🇬🇬"],
+    ["JE","Jersey","🇯🇪"],["IM","Isle of Man","🇮🇲"],["SX","Sint Maarten","🇸🇽"],["AI","Anguilla","🇦🇮"],["VG","British Virgin Islands","🇻🇬"],
+    ["VI","U.S. Virgin Islands","🇻🇮"],["TC","Turks and Caicos Islands","🇹🇨"],["CC","Cocos (Keeling) Islands","🇨🇨"],["CK","Cook Islands","🇨🇰"],
+    ["NU","Niue","🇳🇺"],["PN","Pitcairn Islands","🇵🇳"],["TK","Tokelau","🇹🇰"],["FM","Micronesia","🇫🇲"],["MH","Marshall Islands","🇲🇭"],
+    ["PW","Palau","🇵🇼"],["NR","Nauru","🇳🇷"],["AQ","Antarctica","🇦🇶"]
+  ];
 
-// Every student gets their own isolated local cache, keyed by Firebase UID,
-// so two students logging in on the same shared computer never see each
-// other's tasks/sessions/calendar in LocalStorage.
-function storageKey(){ return `${STORAGE_BASE}_${currentStudent ? currentStudent.uid : "guest"}`; }
-function settingsKey(){ return `${SETTINGS_BASE}_${currentStudent ? currentStudent.uid : "guest"}`; }
+  const STORAGE_KEY = "wcfb_settings_v1";
+  const STORAGE_STATS = "wcfb_stats_v1";
 
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => [...document.querySelectorAll(s)];
-const todayISO = () => new Date().toISOString().split("T")[0];
+  const settings = {
+    flagCount: 250,
+    battleSpeed: "normal",
+    collisionIntensity: "normal",
+    autoMode: true,
+    soundOn: true,
+    voiceOn: true,
+    musicOn: true,
+    volume: 0.7,
+    speed: 1
+  };
 
-const state = {
-  tasks: [],
-  focusSessions: [],
-  calendar: {},
-  settings: { theme: "dark", fontSize: 16 },
-  timer: {
-    mode: "focus",
-    workMinutes: 25,
-    breakMinutes: 5,
-    remaining: 25 * 60,
-    running: false,
-    interval: null,
-    phase: "focus",
-    endAt: null
-  },
-  selectedDate: todayISO(),
-  currentMonth: new Date().getMonth(),
-  currentYear: new Date().getFullYear()
-};
+  let audioCtx = null, masterGain = null, musicOsc = null, musicGain = null, unlockedAudio = false;
+  const stats = JSON.parse(localStorage.getItem(STORAGE_STATS) || "{}");
+  for (const c of COUNTRY_DATA) stats[c[1]] ??= { wins: 0, finals: 0, champs: 0 };
 
-let wakeLockSentinel = null;
-let alarmInterval = null;
-let alarmAudioCtx = null;
+  const state = {
+    running: false, paused: false, inBattle: false, tournamentOver: false,
+    stage: "QUALIFYING", round: 1, totalRounds: 0, winner: null,
+    flags: [], active: [], eliminated: [], particles: [], shake: 0, zoom: 1,
+    lastTime: 0, countdown: 0, phase: "idle", nextActionAt: 0, bracketSize: 0
+  };
 
-// The currently signed-in student's profile ({ uid, studentId, name, ... }).
-// Everything Firebase-related below reads/writes through this.
-let currentStudent = null;
+  const arena = { x: 0, y: 0, r: 0, w: 0, h: 0 };
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const now = () => performance.now();
 
-function loadState(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(storageKey()));
-    if(saved){
-      Object.assign(state, saved);
-      state.timer = Object.assign(
-        { mode:"focus", workMinutes:25, breakMinutes:5, remaining:1500, running:false, interval:null, phase:"focus", endAt:null },
-        saved.timer || {}
-      );
+  function saveSettings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); }
+  function loadSettings() {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    Object.assign(settings, s);
+    syncUI();
+  }
+
+  function syncUI() {
+    els.autoMode.checked = settings.autoMode;
+    els.soundOn.checked = settings.soundOn;
+    els.voiceOn.checked = settings.voiceOn;
+    els.musicOn.checked = settings.musicOn;
+    els.volume.value = Math.round(settings.volume * 100);
+    els.volumeVal.textContent = `${Math.round(settings.volume * 100)}%`;
+    els.speedVal.textContent = `×${settings.speed}`;
+    els.speedLabel.textContent = `×${settings.speed}`;
+    els.autoLabel.textContent = settings.autoMode ? "AUTO ON" : "AUTO OFF";
+    els.flagCount.value = String(settings.flagCount);
+    els.battleSpeed.value = settings.battleSpeed;
+    els.collisionIntensity.value = settings.collisionIntensity;
+    els.speedBtns.forEach(b => b.classList.toggle("active", Number(b.dataset.speed) === settings.speed));
+  }
+
+  function unlockAudio() {
+    if (unlockedAudio) return;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.connect(audioCtx.destination);
+      musicGain = audioCtx.createGain();
+      musicGain.connect(masterGain);
+      masterGain.gain.value = settings.volume;
+      musicGain.gain.value = settings.musicOn ? 0.035 : 0;
+      unlockedAudio = true;
+    } catch { unlockedAudio = false; }
+  }
+
+  function tone(freq, dur, type = "sine", gain = 0.08, when = 0) {
+    if (!audioCtx || !settings.soundOn) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime + when);
+    g.gain.exponentialRampToValueAtTime(gain, audioCtx.currentTime + when + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + when + dur);
+    o.connect(g); g.connect(masterGain);
+    o.start(audioCtx.currentTime + when); o.stop(audioCtx.currentTime + when + dur + 0.02);
+  }
+
+  function noiseBurst(dur, gain = 0.06) {
+    if (!audioCtx || !settings.soundOn) return;
+    const len = audioCtx.sampleRate * dur, buffer = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = audioCtx.createBufferSource(); src.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter(); filter.type = "bandpass"; filter.frequency.value = 900;
+    const g = audioCtx.createGain(); g.gain.value = gain;
+    src.connect(filter); filter.connect(g); g.connect(masterGain); src.start();
+  }
+
+  let impactThrottle = 0, wallThrottle = 0;
+  function collisionSound(intensity = 1) {
+    const t = now();
+    if (t - impactThrottle < 20) return;
+    impactThrottle = t;
+    const vol = clamp(0.02 + intensity * 0.08 * settings.volume, 0.02, 0.12);
+    tone(170 + intensity * 120, 0.04 + intensity * 0.02, "triangle", vol);
+    tone(95 + intensity * 45, 0.05, "sine", vol * 0.6);
+  }
+  function wallSound(intensity = 1) {
+    const t = now();
+    if (t - wallThrottle < 25) return;
+    wallThrottle = t;
+    tone(280 + intensity * 80, 0.03, "sine", 0.03 + intensity * 0.03);
+  }
+  function eliminationSound() { tone(320, 0.06, "square", 0.06); tone(220, 0.1, "sawtooth", 0.04, 0.06); }
+  function roundSound() { tone(523, 0.08, "triangle", 0.06); tone(659, 0.08, "triangle", 0.06, 0.08); tone(784, 0.1, "triangle", 0.06, 0.16); }
+  function victorySound(final = false) {
+    tone(523, 0.12, "triangle", 0.08); tone(659, 0.12, "triangle", 0.08, 0.12); tone(784, 0.18, "triangle", 0.1, 0.22);
+    if (final) { tone(1046, 0.22, "sine", 0.12, 0.42); noiseBurst(0.22, 0.04); }
+  }
+
+  function startMusic() {
+    if (!audioCtx || !settings.musicOn) return;
+    stopMusic();
+    musicOsc = audioCtx.createOscillator();
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    lfo.frequency.value = 0.12;
+    lfoGain.gain.value = 12;
+    lfo.connect(lfoGain); lfoGain.connect(musicOsc.frequency);
+    musicGain.gain.value = 0.03;
+    musicOsc.type = "sine";
+    musicOsc.frequency.value = 55;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass"; filter.frequency.value = 380;
+    musicOsc.connect(filter); filter.connect(musicGain);
+    musicOsc.start(); lfo.start();
+    musicOsc._lfo = lfo;
+  }
+  function stopMusic() {
+    try { if (musicOsc) { musicOsc.stop(); musicOsc._lfo?.stop(); } } catch {}
+    musicOsc = null;
+  }
+
+  function announce(text) {
+    els.announcement.textContent = text;
+    if (settings.voiceOn && "speechSynthesis" in window) {
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text.replace(/\s+/g, " "));
+        u.rate = 1.02; u.pitch = 1.05; u.volume = settings.volume;
+        speechSynthesis.speak(u);
+      } catch {}
     }
-    const settings = JSON.parse(localStorage.getItem(settingsKey()));
-    if(settings) state.settings = Object.assign(state.settings, settings);
-  }catch(e){}
-}
-
-function saveState(){
-  const persist = {
-    tasks: state.tasks,
-    focusSessions: state.focusSessions,
-    calendar: state.calendar,
-    timer: {
-      mode: state.timer.mode,
-      workMinutes: state.timer.workMinutes,
-      breakMinutes: state.timer.breakMinutes,
-      remaining: state.timer.remaining,
-      running: state.timer.running,
-      phase: state.timer.phase,
-      endAt: state.timer.endAt
-    },
-    selectedDate: state.selectedDate,
-    currentMonth: state.currentMonth,
-    currentYear: state.currentYear
-  };
-  localStorage.setItem(storageKey(), JSON.stringify(persist));
-  localStorage.setItem(settingsKey(), JSON.stringify(state.settings));
-}
-
-function autosave(){ saveState(); renderAll(); syncActivityIfChanged(); }
-
-function formatMinutes(mins){
-  const h = Math.floor(mins / 60);
-  const m = Math.round(mins % 60);
-  return `${h}h ${m}m`;
-}
-
-function formatTime(sec){
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-}
-
-function isSameDay(a,b){ return a === b; }
-function startOfWeek(d){
-  const date = new Date(d);
-  const day = date.getDay() || 7;
-  date.setDate(date.getDate() - day + 1);
-  return new Date(date.setHours(0,0,0,0));
-}
-function endOfMonth(d){
-  return new Date(d.getFullYear(), d.getMonth()+1, 0);
-}
-function dateKey(date){
-  return new Date(date).toISOString().split("T")[0];
-}
-function monthName(y,m){
-  return new Date(y,m,1).toLocaleDateString(undefined,{month:"long", year:"numeric"});
-}
-function getGreeting(){
-  const h = new Date().getHours();
-  return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
-}
-
-function taskStats(){
-  const today = todayISO();
-  const todaysTasks = state.tasks.filter(t => t.createdAt === today);
-  const completed = todaysTasks.filter(t => t.done).length;
-  return {
-    totalToday: todaysTasks.length,
-    pending: todaysTasks.filter(t => !t.done).length,
-    completed,
-    completionPercent: todaysTasks.length ? Math.round((completed / todaysTasks.length) * 100) : 0
-  };
-}
-
-function studyMinutesForRange(start, end){
-  return state.focusSessions.reduce((sum,s)=>{
-    const d = new Date(s.date);
-    if(d >= start && d <= end) return sum + (s.minutes || 0);
-    return sum;
-  }, 0);
-}
-
-function renderClock(){
-  $("#greeting").textContent = getGreeting();
-  $("#todayDate").textContent = new Date().toLocaleDateString(undefined, { weekday:"long", year:"numeric", month:"long", day:"numeric" });
-  $("#currentTime").textContent = new Date().toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit", second:"2-digit" });
-}
-
-function renderStats(){
-  const today = todayISO();
-  const now = new Date();
-  const weekStart = startOfWeek(now);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const todayMinutes = studyMinutesForRange(new Date(today+"T00:00:00"), new Date(today+"T23:59:59"));
-  const weekMinutes = studyMinutesForRange(weekStart, now);
-  const monthMinutes = studyMinutesForRange(monthStart, now);
-  const allDays = [...new Set(state.focusSessions.map(s => s.date))].length || 1;
-  const avg = Math.round(monthMinutes / allDays);
-
-  const completedTasks = state.tasks.filter(t => t.done).length;
-  const streak = calculateStreak();
-
-  const st = taskStats();
-  $("#todayTasksCount").textContent = st.totalToday;
-  $("#pendingTasksCount").textContent = st.pending;
-  $("#completedTasksCount").textContent = st.completed;
-  $("#todayStudyHours").textContent = formatMinutes(todayMinutes);
-  $("#completionPercent").textContent = `${st.completionPercent}%`;
-
-  $("#sidebarStreak").textContent = `${streak} days`;
-  $("#sidebarTodayHours").textContent = formatMinutes(todayMinutes);
-
-  $("#dashTodayTasks").textContent = st.totalToday;
-  $("#dashPendingTasks").textContent = st.pending;
-  $("#dashCompletedTasks").textContent = st.completed;
-  $("#dashTodayHours").textContent = formatMinutes(todayMinutes);
-  $("#dashStreak").textContent = `${streak} days`;
-  $("#dashWeeklyProgress").textContent = `${Math.min(100, Math.round((weekMinutes / (7*60)) * 100))}%`;
-  $("#dashMonthlyProgress").textContent = `${Math.min(100, Math.round((monthMinutes / (30*60)) * 100))}%`;
-
-  $("#statsToday").textContent = formatMinutes(todayMinutes);
-  $("#statsWeekly").textContent = formatMinutes(weekMinutes);
-  $("#statsMonthly").textContent = formatMinutes(monthMinutes);
-  $("#statsStreak").textContent = `${streak} days`;
-  $("#statsCompleted").textContent = completedTasks;
-  $("#statsAverage").textContent = formatMinutes(avg);
-
-  const circle = $("#progressCircle");
-  const percent = st.completionPercent;
-  const dash = 314 - (314 * percent / 100);
-  circle.style.strokeDashoffset = dash;
-}
-
-function calculateStreak(){
-  const doneDays = [...new Set(state.focusSessions.map(s => s.date))].sort();
-  if(!doneDays.length) return 0;
-  let streak = 0;
-  let cursor = new Date();
-  cursor.setHours(0,0,0,0);
-  while(true){
-    const key = dateKey(cursor);
-    if(doneDays.includes(key)){ streak++; cursor.setDate(cursor.getDate()-1); }
-    else break;
   }
-  return streak;
-}
 
-function renderTasks(){
-  const list = $("#taskList");
-  list.innerHTML = "";
-  const today = todayISO();
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * devicePixelRatio);
+    canvas.height = Math.floor(rect.height * devicePixelRatio);
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    arena.w = rect.width; arena.h = rect.height; arena.x = rect.width / 2; arena.y = rect.height / 2; arena.r = Math.min(rect.width, rect.height) * 0.41;
+  }
 
-  state.tasks
-    .filter(t => t.createdAt === today)
-    .sort((a,b)=> (a.done - b.done) || ({High:0,Medium:1,Low:2}[a.priority]-{High:0,Medium:1,Low:2}[b.priority]))
-    .forEach(task => {
-      const el = document.createElement("div");
-      el.className = `task-item ${task.done ? "done" : ""}`;
-      el.innerHTML = `
-        <div>
-          <strong>${escapeHtml(task.title)}</strong>
-          <div class="muted">${escapeHtml(task.subject)} · ${task.priority}</div>
-        </div>
-        <div class="task-actions">
-          <button class="btn ghost" data-action="toggle" data-id="${task.id}">${task.done ? "Undo" : "Complete"}</button>
-          <button class="btn secondary" data-action="edit" data-id="${task.id}">Edit</button>
-          <button class="btn danger" data-action="delete" data-id="${task.id}">Delete</button>
-        </div>`;
-      list.appendChild(el);
+  function createFlags() {
+    const count = settings.flagCount;
+    const pool = [...COUNTRY_DATA].sort(() => Math.random() - 0.5).slice(0, Math.min(count, COUNTRY_DATA.length));
+    state.flags = pool.map(([id, name, flag], i) => {
+      const a = Math.random() * Math.PI * 2, rr = rand(0, arena.r * 0.7);
+      return {
+        id, name, flag, x: arena.x + Math.cos(a) * rr, y: arena.y + Math.sin(a) * rr,
+        vx: rand(-1.8, 1.8), vy: rand(-1.8, 1.8), r: 10 + Math.random() * 3,
+        hp: 100, active: true, elimAt: 0, angle: Math.random() * Math.PI * 2, spin: rand(-0.03, 0.03),
+        trail: [], lastHit: 0
+      };
     });
-}
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-}
-
-function renderCalendar(){
-  const grid = $("#calendarGrid");
-  grid.innerHTML = "";
-  const first = new Date(state.currentYear, state.currentMonth, 1);
-  const last = new Date(state.currentYear, state.currentMonth + 1, 0);
-  const startDay = (first.getDay() + 6) % 7;
-  $("#calendarMonthLabel").textContent = monthName(state.currentYear, state.currentMonth);
-
-  const weekdays = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  weekdays.forEach(d => {
-    const hd = document.createElement("div");
-    hd.className = "day-cell muted";
-    hd.style.minHeight = "42px";
-    hd.innerHTML = `<div class="day-num">${d}</div>`;
-    grid.appendChild(hd);
-  });
-
-  for(let i=0;i<startDay;i++){
-    const blank = document.createElement("div");
-    blank.className = "day-cell muted";
-    grid.appendChild(blank);
+    state.active = state.flags.slice();
+    state.eliminated = [];
+    state.bracketSize = state.active.length;
+    state.totalRounds = Math.max(1, Math.ceil(Math.log2(state.active.length)));
+    updateGrid(); updateLeaderboard();
   }
 
-  for(let day=1; day<=last.getDate(); day++){
-    const iso = dateKey(new Date(state.currentYear, state.currentMonth, day));
-    const focusMins = state.focusSessions.filter(s => s.date === iso).reduce((a,b)=>a+b.minutes,0);
-    const tasks = state.tasks.filter(t => t.createdAt === iso).length;
-    const cell = document.createElement("div");
-    cell.className = `day-cell ${iso === state.selectedDate ? "selected" : ""}`;
-    cell.innerHTML = `<div class="day-num">${day}</div><div class="day-meta">${formatMinutes(focusMins)} · ${tasks} tasks</div>`;
-    cell.onclick = () => {
-      state.selectedDate = iso;
-      autosave();
-      updateCalendarDetails();
-      renderCalendar();
-    };
-    grid.appendChild(cell);
-  }
-  updateCalendarDetails();
-}
-
-function updateCalendarDetails(){
-  $("#selectedDateLabel").textContent = state.selectedDate;
-  const entry = state.calendar[state.selectedDate] || {};
-  $("#calendarStudyHours").value = entry.studyHours ?? "";
-  $("#calendarNotes").value = entry.notes ?? "";
-  const taskCount = state.tasks.filter(t => t.createdAt === state.selectedDate).length;
-  const focusMins = state.focusSessions.filter(s => s.date === state.selectedDate).reduce((a,b)=>a+b.minutes,0);
-  $("#daySummary").textContent = `${taskCount} tasks · ${formatMinutes(focusMins)} studied`;
-}
-
-function renderSettings(){
-  document.documentElement.dataset.theme = state.settings.theme;
-  document.documentElement.style.setProperty("--base-font", `${state.settings.fontSize}px`);
-  $(`input[name="theme"][value="${state.settings.theme}"]`).checked = true;
-  $("#fontSize").value = state.settings.fontSize;
-}
-
-function renderTimer(){
-  $("#timerDisplay").textContent = formatTime(state.timer.remaining);
-  $("#timerMode").textContent = state.timer.phase === "focus" ? "Focus" : "Break";
-}
-
-function renderTimerActiveState(){
-  const circle = $("#timerCircle");
-  if(circle) circle.classList.toggle("is-running", !!state.timer.running);
-}
-
-function renderChart(){
-  const canvas = $("#progressChart");
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width, h = canvas.height;
-  ctx.clearRect(0,0,w,h);
-
-  const days = Array.from({length:7}, (_,i)=>{
-    const d = new Date();
-    d.setDate(d.getDate() - (6-i));
-    d.setHours(0,0,0,0);
-    return d;
-  });
-
-  const values = days.map(d => studyMinutesForRange(d, new Date(d.getTime() + 86399999)) / 60);
-  const max = Math.max(1, ...values);
-  const barW = 90;
-  const gap = 35;
-  const startX = 35;
-
-  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--muted");
-  ctx.font = "14px 'JetBrains Mono', monospace";
-  ctx.fillText("Last 7 days", 18, 24);
-
-  values.forEach((v,i)=>{
-    const x = startX + i*(barW+gap);
-    const barH = (v/max) * 165;
-    ctx.fillStyle = "rgba(232,163,61,.8)";
-    roundRect(ctx, x, 220-barH, barW, barH, 16, true, false);
-    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--text");
-    ctx.fillText(days[i].toLocaleDateString(undefined,{weekday:"short"}), x+18, 242);
-    ctx.fillText(v.toFixed(1)+"h", x+18, 205-barH);
-  });
-}
-
-function renderMonthlyTrendChart(){
-  const canvas = $("#monthlyTrendChart");
-  if(!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width, h = canvas.height;
-  ctx.clearRect(0,0,w,h);
-
-  const days = Array.from({length:30}, (_,i)=>{
-    const d = new Date();
-    d.setDate(d.getDate() - (29-i));
-    d.setHours(0,0,0,0);
-    return d;
-  });
-  const values = days.map(d => studyMinutesForRange(d, new Date(d.getTime()+86399999))/60);
-  const max = Math.max(1, ...values);
-  const padding = 30;
-  const plotW = w - padding*2;
-  const plotH = h - padding*2;
-  const stepX = values.length > 1 ? plotW/(values.length-1) : 0;
-
-  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--line");
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(padding, h-padding);
-  ctx.lineTo(w-padding, h-padding);
-  ctx.stroke();
-
-  ctx.beginPath();
-  values.forEach((v,i)=>{
-    const x = padding + i*stepX;
-    const y = h - padding - (v/max)*plotH;
-    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-  });
-  ctx.strokeStyle = "#e8a33d";
-  ctx.lineWidth = 2.5;
-  ctx.lineJoin = "round";
-  ctx.stroke();
-
-  ctx.lineTo(padding+plotW, h-padding);
-  ctx.lineTo(padding, h-padding);
-  ctx.closePath();
-  ctx.fillStyle = "rgba(232,163,61,.15)";
-  ctx.fill();
-
-  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--muted");
-  ctx.font = "12px 'JetBrains Mono', monospace";
-  ctx.fillText(days[0].toLocaleDateString(undefined,{month:"short",day:"numeric"}), padding, h-8);
-  const lastLabel = days[days.length-1].toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  ctx.fillText(lastLabel, w-padding-ctx.measureText(lastLabel).width, h-8);
-}
-
-function renderTaskCompletionChart(){
-  const canvas = $("#taskCompletionChart");
-  if(!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const w = canvas.width, h = canvas.height;
-  ctx.clearRect(0,0,w,h);
-
-  const total = state.tasks.length;
-  const completed = state.tasks.filter(t=>t.done).length;
-  const pending = total - completed;
-  const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 18;
-
-  const legend = $("#taskCompletionLegend");
-
-  if(total === 0){
-    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--muted");
-    ctx.font = "14px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("No tasks yet", cx, cy);
-    ctx.textAlign = "start";
-    if(legend) legend.innerHTML = `<p class="empty-note">Add a task to see this chart.</p>`;
-    return;
+  function updateGrid() {
+    els.flagGrid.innerHTML = "";
+    for (const f of state.flags) {
+      const d = document.createElement("div");
+      d.className = "flag-cell active"; d.textContent = f.flag; d.title = f.name;
+      d.dataset.id = f.id;
+      els.flagGrid.appendChild(d);
+    }
+    syncGrid();
   }
 
-  const completedAngle = (completed/total) * Math.PI*2;
-  ctx.lineWidth = 26;
-  ctx.lineCap = "round";
+  function syncGrid() {
+    els.trackerCount.textContent = `${state.active.length} / ${state.flags.length} FLAGS`;
+    els.activeText.textContent = String(state.active.length);
+    els.roundText.textContent = String(state.round);
+    els.stageText.textContent = state.stage;
+    document.querySelectorAll(".flag-cell").forEach(el => {
+      const f = state.flags.find(x => x.id === el.dataset.id);
+      if (!f) return;
+      el.classList.toggle("elim", !f.active);
+      el.classList.toggle("finalist", state.stage === "FINAL" && f.active);
+      el.classList.toggle("winner", state.winner?.id === f.id);
+      el.classList.toggle("active", f.active);
+    });
+  }
 
-  ctx.beginPath();
-  ctx.arc(cx,cy,r, -Math.PI/2 + completedAngle, Math.PI*1.5);
-  ctx.strokeStyle = "rgba(255,255,255,.14)";
-  ctx.stroke();
+  function updateLeaderboard() {
+    const arr = Object.entries(stats).map(([name, s]) => ({ name, ...s })).sort((a, b) => b.wins - a.wins || b.champs - a.champs || b.finals - a.finals);
+    els.leaderboardList.innerHTML = arr.slice(0, 12).map((x, i) => `<div class="lb-row"><div class="lb-rank">#${i + 1}</div><div class="lb-name">${x.name}</div><div class="lb-wins">${x.wins} wins</div></div>`).join("");
+  }
 
-  if(completed > 0){
+  function stageForRound(activeCount) {
+    if (activeCount > 128) return "QUALIFYING";
+    if (activeCount > 64) return "KNOCKOUT";
+    if (activeCount > 16) return "QUARTER FINAL";
+    if (activeCount > 2) return "SEMI FINAL";
+    return "FINAL";
+  }
+
+  function startTournament() {
+    state.running = true; state.paused = false; state.tournamentOver = false; state.round = 1; state.winner = null;
+    createFlags();
+    state.stage = stageForRound(state.active.length);
+    announce(`Round 1 is starting.`);
+    state.phase = "countdown"; state.countdown = 3; state.nextActionAt = now() + 700;
+    els.overlayWinner.classList.add("hidden"); els.overlayStage.classList.remove("hidden"); els.overlayStage.textContent = state.stage;
+    roundSound();
+    syncGrid(); syncUIOnly();
+  }
+
+  function syncUIOnly() {
+    els.stageText.textContent = state.stage;
+    els.roundText.textContent = String(state.round);
+    els.activeText.textContent = String(state.active.length);
+    els.speedLabel.textContent = `×${settings.speed}`;
+    els.autoLabel.textContent = settings.autoMode ? "AUTO ON" : "AUTO OFF";
+  }
+
+  function beginBattle() {
+    state.inBattle = true; state.phase = "battle"; els.overlayStage.classList.add("hidden");
+    announce(`Three... Two... One... Go!`);
+    roundSound();
+    if (state.stage === "FINAL") { state.zoom = 1.06; state.shake = 8; }
+  }
+
+  function eliminateFlag(flag, cause = "battle") {
+    if (!flag.active) return;
+    flag.active = false; flag.elimAt = now();
+    state.active = state.active.filter(f => f.active);
+    state.eliminated.push(flag);
+    stats[flag.name].wins ??= 0; stats[flag.name].finals ??= 0; stats[flag.name].champs ??= 0;
+    if (cause === "final") stats[flag.name].finals++;
+    eliminationSound();
+    const cell = [...document.querySelectorAll(".flag-cell")].find(x => x.dataset.id === flag.id);
+    if (cell) { cell.classList.add("elim"); cell.classList.remove("active"); }
+  }
+
+  function maybeSetWinner() {
+    if (state.active.length > 1) return false;
+    state.winner = state.active[0] || state.flags[Math.floor(Math.random() * state.flags.length)];
+    if (state.winner) {
+      state.winner.active = true;
+      stats[state.winner.name].wins++;
+      stats[state.winner.name].champs++;
+      updateLeaderboard();
+      const final = state.stage === "FINAL";
+      announce(final ? `The World Country Flag Battle Champion is ${state.winner.name}.` : `The winner of Round ${state.round} is ${state.winner.name}.`);
+      victorySound(final);
+      els.overlayWinner.classList.remove("hidden");
+      els.winnerName.textContent = state.winner.name;
+      els.winnerFlag.textContent = state.winner.flag || "🏳️";
+      document.querySelectorAll(".flag-cell").forEach(el => el.classList.toggle("winner", el.dataset.id === state.winner.id));
+    }
+    state.inBattle = false; state.phase = "winner"; state.nextActionAt = now() + (state.stage === "FINAL" ? 4500 : 1800);
+    return true;
+  }
+
+  function nextRoundOrFinish() {
+    if (state.active.length <= 1) {
+      if (!state.winner) maybeSetWinner();
+      state.tournamentOver = true;
+      if (settings.autoMode) setTimeout(() => { els.overlayWinner.classList.add("hidden"); startTournament(); }, 6500);
+      return;
+    }
+    state.round++;
+    state.stage = stageForRound(state.active.length);
+    syncGrid(); syncUIOnly();
+    els.overlayStage.textContent = state.stage;
+    els.overlayStage.classList.remove("hidden");
+    announce(`Round ${state.round} is starting.`);
+    state.phase = "countdown"; state.countdown = state.stage === "FINAL" ? 4 : 3; state.nextActionAt = now() + 900;
+    roundSound();
+  }
+
+  function simulate(dt) {
+    if (state.paused || !state.running) return;
+    if (state.phase === "countdown" && now() >= state.nextActionAt) {
+      if (state.countdown > 1) { state.countdown--; state.nextActionAt = now() + 850; if (settings.soundOn) tone(420 + state.countdown * 90, 0.08, "square", 0.05); els.overlayStage.textContent = state.stage + `\n${state.countdown}`; }
+      else beginBattle();
+    } else if (state.phase === "winner" && now() >= state.nextActionAt) {
+      els.overlayWinner.classList.add("hidden");
+      state.phase = "between";
+      nextRoundOrFinish();
+    }
+
+    if (!state.inBattle) return;
+    const speedFactor = settings.speed * ({slow:0.8, normal:1, fast:1.35}[settings.battleSpeed] || 1) * dt * 0.06;
+    const damping = 0.996;
+    for (const f of state.active) {
+      const jitter = settings.collisionIntensity === "high" ? 0.06 : settings.collisionIntensity === "low" ? 0.02 : 0.04;
+      f.vx += rand(-jitter, jitter) * speedFactor;
+      f.vy += rand(-jitter, jitter) * speedFactor;
+      const maxV = settings.battleSpeed === "fast" ? 3.8 : 3.1;
+      const sp = Math.hypot(f.vx, f.vy) || 1;
+      if (sp > maxV) { f.vx = f.vx / sp * maxV; f.vy = f.vy / sp * maxV; }
+      f.x += f.vx * speedFactor * 16;
+      f.y += f.vy * speedFactor * 16;
+      f.angle += f.spin * settings.speed;
+      f.vx *= damping; f.vy *= damping;
+
+      const dx = f.x - arena.x, dy = f.y - arena.y, dist = Math.hypot(dx, dy);
+      const limit = arena.r - f.r - 4;
+      if (dist > limit) {
+        const nx = dx / dist, ny = dy / dist;
+        f.x = arena.x + nx * limit; f.y = arena.y + ny * limit;
+        const dot = f.vx * nx + f.vy * ny;
+        f.vx -= 1.9 * dot * nx; f.vy -= 1.9 * dot * ny;
+        f.vx += nx * -0.2; f.vy += ny * -0.2;
+        wallSound(Math.min(1, Math.abs(dot) / 4));
+      }
+      f.trail.push([f.x, f.y]); if (f.trail.length > 6) f.trail.shift();
+    }
+
+    for (let i = 0; i < state.active.length; i++) {
+      for (let j = i + 1; j < state.active.length; j++) {
+        const a = state.active[i], b = state.active[j];
+        const dx = b.x - a.x, dy = b.y - a.y, dist = Math.hypot(dx, dy) || 0.001;
+        const minD = a.r + b.r;
+        if (dist < minD) {
+          const nx = dx / dist, ny = dy / dist;
+          const overlap = minD - dist;
+          a.x -= nx * overlap * 0.5; a.y -= ny * overlap * 0.5;
+          b.x += nx * overlap * 0.5; b.y += ny * overlap * 0.5;
+          const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+          const impulse = -rel * 0.92;
+          a.vx -= impulse * nx; a.vy -= impulse * ny;
+          b.vx += impulse * nx; b.vy += impulse * ny;
+          const inten = Math.abs(rel);
+          collisionSound(inten);
+          if (inten > 1.1) {
+            a.hp -= inten * 4.5; b.hp -= inten * 4.5;
+            state.particles.push(...spawnBurst((a.x + b.x) / 2, (a.y + b.y) / 2, inten));
+          }
+        }
+      }
+    }
+
+    for (const f of [...state.active]) {
+      if (f.hp <= 0 && state.active.length > 1) eliminateFlag(f, state.stage === "FINAL" ? "final" : "battle");
+    }
+    if (state.active.length === 1) maybeSetWinner();
+  }
+
+  function spawnBurst(x, y, inten) {
+    const n = Math.min(10, 4 + inten | 0), arr = [];
+    for (let i = 0; i < n; i++) arr.push({ x, y, vx: rand(-2, 2) * inten, vy: rand(-2, 2) * inten, life: rand(18, 34), c: Math.random() > .5 ? "#ffd23f" : "#20d69c" });
+    return arr;
+  }
+
+  function drawArena() {
+    ctx.clearRect(0, 0, arena.w, arena.h);
+    const g = ctx.createRadialGradient(arena.x, arena.y, arena.r * 0.1, arena.x, arena.y, arena.r * 1.1);
+    g.addColorStop(0, "rgba(4,32,21,.35)");
+    g.addColorStop(1, "rgba(0,0,0,.95)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, arena.w, arena.h);
+
+    const pulse = 0.5 + 0.5 * Math.sin(now() * 0.002);
+    ctx.save();
+    ctx.shadowColor = "rgba(255,255,255,.75)"; ctx.shadowBlur = 18;
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#fff";
+    ctx.beginPath(); ctx.arc(arena.x, arena.y, arena.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,210,63,${0.85 * pulse})`; ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.arc(cx,cy,r, -Math.PI/2, -Math.PI/2 + completedAngle);
-    ctx.strokeStyle = "#4f9d69";
+    ctx.arc(arena.x, arena.y, arena.r, Math.PI * 0.18, Math.PI * 0.18 + Math.PI * 1.2);
     ctx.stroke();
-  }
+    ctx.restore();
 
-  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--text");
-  ctx.font = "700 22px 'JetBrains Mono', monospace";
-  ctx.textAlign = "center";
-  ctx.fillText(`${Math.round((completed/total)*100)}%`, cx, cy+8);
-  ctx.textAlign = "start";
-
-  if(legend){
-    legend.innerHTML = `
-      <div class="legend-row"><span class="swatch" style="background:#4f9d69"></span>Completed · ${completed}</div>
-      <div class="legend-row"><span class="swatch" style="background:rgba(255,255,255,.25)"></span>Pending · ${pending}</div>
-    `;
-  }
-}
-
-function renderTable(headers, rows){
-  return `<table class="data-table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-}
-
-function renderDataTables(){
-  const tasksSorted = [...state.tasks].sort((a,b)=> b.createdAt.localeCompare(a.createdAt));
-  $("#dataTaskCount").textContent = tasksSorted.length;
-  $("#allTasksTable").innerHTML = tasksSorted.length
-    ? renderTable(
-        ["Date","Title","Subject","Priority","Status"],
-        tasksSorted.map(t=>[t.createdAt, escapeHtml(t.title), escapeHtml(t.subject), t.priority, t.done ? "Done" : "Pending"])
-      )
-    : `<p class="empty-note">No tasks logged yet.</p>`;
-
-  const sessionsSorted = [...state.focusSessions].sort((a,b)=> (b.timestamp||0) - (a.timestamp||0));
-  $("#dataSessionCount").textContent = sessionsSorted.length;
-  $("#allSessionsTable").innerHTML = sessionsSorted.length
-    ? renderTable(
-        ["Date","Time","Duration"],
-        sessionsSorted.map(s=>[
-          s.date,
-          s.timestamp ? new Date(s.timestamp).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}) : "—",
-          formatMinutes(s.minutes || 0)
-        ])
-      )
-    : `<p class="empty-note">No focus sessions logged yet.</p>`;
-
-  const calendarEntries = Object.entries(state.calendar).sort((a,b)=> b[0].localeCompare(a[0]));
-  $("#dataCalendarCount").textContent = calendarEntries.length;
-  $("#allCalendarTable").innerHTML = calendarEntries.length
-    ? renderTable(
-        ["Date","Hours","Notes"],
-        calendarEntries.map(([date,entry])=>[date, entry.studyHours ?? 0, escapeHtml(entry.notes || "—")])
-      )
-    : `<p class="empty-note">No calendar entries yet.</p>`;
-}
-
-function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
-  if (typeof radius === "number") radius = {tl: radius, tr: radius, br: radius, bl: radius};
-  ctx.beginPath();
-  ctx.moveTo(x + radius.tl, y);
-  ctx.lineTo(x + width - radius.tr, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
-  ctx.lineTo(x + width, y + height - radius.br);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
-  ctx.lineTo(x + radius.bl, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
-  ctx.lineTo(x, y + radius.tl);
-  ctx.quadraticCurveTo(x, y, x + radius.tl, y);
-  ctx.closePath();
-  if (fill) ctx.fill();
-  if (stroke) ctx.stroke();
-}
-
-function renderAll(){
-  renderClock();
-  renderStats();
-  renderTasks();
-  renderCalendar();
-  renderSettings();
-  renderTimer();
-  renderTimerActiveState();
-  renderChart();
-  renderDataTables();
-  renderMonthlyTrendChart();
-  renderTaskCompletionChart();
-}
-
-function switchView(view){
-  $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.view === view));
-  $$(".view").forEach(v => v.classList.remove("view-active"));
-  $("#view-" + view).classList.add("view-active");
-}
-
-function notify(title, body){
-  if("Notification" in window && Notification.permission === "granted"){
-    new Notification(title, { body });
-  }
-}
-
-/* =============================================================================
-   FIRESTORE ACTIVITY SYNC
-   -----------------------------------------------------------------------------
-   One computed "snapshot" object represents everything the Admin Dashboard
-   needs to show for this student. It's built entirely from state that
-   already exists (taskStats, calculateStreak, studyMinutesForRange, the
-   timer) — nothing is duplicated or tracked twice. We only write to
-   Firestore when the snapshot actually changes, plus a periodic heartbeat,
-   so a running timer doesn't hammer the database every second.
-============================================================================= */
-const IDLE_LIMIT_MS = 5 * 60 * 1000; // 5 minutes, per spec
-const HEARTBEAT_MS = 20 * 1000;      // keeps lastSeen fresh even if nothing changed
-
-let idleTimer = null;
-let isIdle = false;
-let lastSyncedSnapshot = "";
-let heartbeatInterval = null;
-
-function computeActivityStatus(){
-  if(document.hidden) return "offline";
-  if(isIdle) return "idle";
-  if(state.timer.running) return "studying";
-  return "online";
-}
-
-function computeActivitySnapshot(){
-  const now = new Date();
-  const today = todayISO();
-  const weekStart = startOfWeek(now);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const todayMinutes = studyMinutesForRange(new Date(today+"T00:00:00"), new Date(today+"T23:59:59"));
-  const weekMinutes = studyMinutesForRange(weekStart, now);
-  const monthMinutes = studyMinutesForRange(monthStart, now);
-  const totalMinutes = state.focusSessions.reduce((sum,s)=> sum + (s.minutes||0), 0);
-
-  return {
-    name: currentStudent ? currentStudent.name : "",
-    studentId: currentStudent ? currentStudent.studentId : "",
-    status: computeActivityStatus(),
-    currentTimer: formatTime(state.timer.remaining),
-    todayStudyTime: todayMinutes,
-    weeklyStudyTime: weekMinutes,
-    monthlyStudyTime: monthMinutes,
-    totalStudyHours: Math.round((totalMinutes/60) * 100) / 100,
-    completedTasks: state.tasks.filter(t=>t.done).length,
-    studyStreak: calculateStreak()
-  };
-}
-
-/** Called from every requested sync point: timer changes, task completion,
- *  study-hour changes, visibility changes, idle/active transitions. Only
- *  actually talks to Firestore when something *meaningful* changed — the
- *  live "currentTimer" string is deliberately excluded from that check
- *  (it ticks every second while a session runs, which would otherwise
- *  turn every second into a Firestore write). The 20s heartbeat below
- *  keeps currentTimer reasonably fresh for the Admin Dashboard without
- *  paying that cost. */
-function syncActivityIfChanged(){
-  if(!currentStudent) return;
-  const snapshot = computeActivitySnapshot();
-  const { currentTimer, ...meaningfulFields } = snapshot;
-  const key = JSON.stringify(meaningfulFields);
-  if(key === lastSyncedSnapshot) return;
-  lastSyncedSnapshot = key;
-  updateStudentActivity(currentStudent.uid, snapshot);
-}
-
-/** Runs on a timer regardless of whether anything changed, so an admin
- *  watching the dashboard can always tell a student is still connected
- *  (their lastSeen keeps advancing). */
-function startHeartbeat(){
-  if(heartbeatInterval) clearInterval(heartbeatInterval);
-  heartbeatInterval = setInterval(()=>{
-    if(!currentStudent) return;
-    updateStudentActivity(currentStudent.uid, computeActivitySnapshot());
-  }, HEARTBEAT_MS);
-}
-function stopHeartbeat(){
-  if(heartbeatInterval){ clearInterval(heartbeatInterval); heartbeatInterval = null; }
-}
-
-function resetIdleTimer(){
-  if(isIdle){
-    isIdle = false;
-    syncActivityIfChanged();
-  }
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(()=>{
-    isIdle = true;
-    syncActivityIfChanged();
-  }, IDLE_LIMIT_MS);
-}
-
-function bindIdleDetection(){
-  ["mousemove","mousedown","keydown","touchstart","scroll"].forEach(evt=>{
-    document.addEventListener(evt, resetIdleTimer, { passive:true });
-  });
-  resetIdleTimer();
-
-  document.addEventListener("visibilitychange", ()=>{
-    // Page Hidden / Page Visible, on top of the existing timer-catch-up listener.
-    syncActivityIfChanged();
-    if(!document.hidden) resetIdleTimer();
-  });
-}
-
-/* ---------- Alarm: loud, attention-grabbing, stoppable, with vibration ---------- */
-function playAlarm(){
-  stopAlarm();
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  if(!AudioCtx) return;
-  alarmAudioCtx = new AudioCtx();
-  let count = 0;
-  const maxBeeps = 6;
-
-  function beepOnce(){
-    if(!alarmAudioCtx) return;
-    const o = alarmAudioCtx.createOscillator();
-    const g = alarmAudioCtx.createGain();
-    o.type = "square";
-    o.frequency.value = count % 2 === 0 ? 880 : 660;
-    g.gain.value = 0.001;
-    g.gain.exponentialRampToValueAtTime(0.22, alarmAudioCtx.currentTime + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.001, alarmAudioCtx.currentTime + 0.28);
-    o.connect(g); g.connect(alarmAudioCtx.destination);
-    o.start();
-    o.stop(alarmAudioCtx.currentTime + 0.3);
-  }
-
-  beepOnce();
-  alarmInterval = setInterval(()=>{
-    count++;
-    if(count >= maxBeeps){ stopAlarm(); return; }
-    beepOnce();
-  }, 400);
-
-  if(navigator.vibrate) navigator.vibrate([300,150,300,150,300,150,300]);
-
-  const btn = $("#stopAlarm");
-  if(btn) btn.hidden = false;
-}
-
-function stopAlarm(){
-  if(alarmInterval){ clearInterval(alarmInterval); alarmInterval = null; }
-  if(alarmAudioCtx){ alarmAudioCtx.close().catch(()=>{}); alarmAudioCtx = null; }
-  if(navigator.vibrate) navigator.vibrate(0);
-  const btn = $("#stopAlarm");
-  if(btn) btn.hidden = true;
-}
-
-/* ---------- Screen Wake Lock: best-effort, prevents auto-sleep while a focus session runs ---------- */
-async function requestWakeLock(){
-  try{
-    if("wakeLock" in navigator){
-      wakeLockSentinel = await navigator.wakeLock.request("screen");
-      wakeLockSentinel.addEventListener("release", ()=>{ wakeLockSentinel = null; });
+    for (const p of state.particles) {
+      p.x += p.vx; p.y += p.vy; p.vx *= 0.97; p.vy *= 0.97; p.life -= 1;
+      ctx.fillStyle = p.c; ctx.globalAlpha = clamp(p.life / 34, 0, 1);
+      ctx.fillRect(p.x, p.y, 2, 2); ctx.globalAlpha = 1;
     }
-  }catch(e){ /* not supported or denied — the timestamp-based timer below still self-corrects */ }
-}
-function releaseWakeLock(){
-  if(wakeLockSentinel){ wakeLockSentinel.release().catch(()=>{}); wakeLockSentinel = null; }
-}
+    state.particles = state.particles.filter(p => p.life > 0);
 
-/* ---------- Timer: timestamp-based so it self-corrects after being backgrounded/locked ---------- */
-function advancePhase(){
-  const finishedPhase = state.timer.phase;
-  const finishedMinutes = finishedPhase === "focus" ? state.timer.workMinutes : state.timer.breakMinutes;
-  if(finishedPhase === "focus"){
-    state.focusSessions.push({ date: todayISO(), minutes: finishedMinutes, timestamp: state.timer.endAt });
-    state.timer.phase = "break";
-  }else{
-    state.timer.phase = "focus";
-  }
-  const nextMinutes = state.timer.phase === "focus" ? state.timer.workMinutes : state.timer.breakMinutes;
-  state.timer.endAt += nextMinutes * 60000;
-}
-
-function evaluateTimer(triggerEffects){
-  if(!state.timer.running || !state.timer.endAt){
-    renderTimer();
-    return;
-  }
-  const now = Date.now();
-  let completedAny = false;
-  let guard = 0;
-  while(state.timer.endAt <= now && guard < 200){
-    advancePhase();
-    completedAny = true;
-    guard++;
-  }
-  state.timer.remaining = Math.max(0, Math.round((state.timer.endAt - now)/1000));
-  if(completedAny && triggerEffects){
-    playAlarm();
-    notify("Focus session complete", "Nice work. Keep going.");
-  }
-  renderTimer();
-  autosave();
-}
-
-function startTimerLoop(){
-  if(state.timer.interval) clearInterval(state.timer.interval);
-  state.timer.interval = setInterval(()=>{
-    if(!state.timer.running) return;
-    evaluateTimer(true);
-  }, 1000);
-}
-
-function bindEvents(){
-  $$(".nav-item").forEach(btn => btn.addEventListener("click", () => switchView(btn.dataset.view)));
-
-  $("#taskForm").addEventListener("submit", e => {
-    e.preventDefault();
-    const id = $("#taskId").value || crypto.randomUUID();
-    const task = {
-      id,
-      title: $("#taskTitle").value.trim(),
-      subject: $("#taskSubject").value.trim(),
-      priority: $("#taskPriority").value,
-      done: false,
-      createdAt: todayISO()
-    };
-    const existing = state.tasks.findIndex(t => t.id === id);
-    if(existing >= 0) state.tasks[existing] = { ...state.tasks[existing], ...task };
-    else state.tasks.unshift(task);
-    e.target.reset();
-    $("#taskId").value = "";
-    autosave();
-    toast("Task saved");
-  });
-
-  $("#taskList").addEventListener("click", e => {
-    const id = e.target.dataset.id;
-    const action = e.target.dataset.action;
-    const task = state.tasks.find(t => t.id === id);
-    if(!task) return;
-    if(action === "toggle"){ task.done = !task.done; autosave(); }
-    if(action === "delete"){
-      state.tasks = state.tasks.filter(t => t.id !== id);
-      autosave();
+    for (const f of state.flags) {
+      const active = f.active;
+      const alpha = active ? 1 : 0.14;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(f.x, f.y); ctx.rotate(f.angle);
+      ctx.shadowColor = active ? "rgba(32,214,156,.35)" : "transparent";
+      ctx.shadowBlur = active ? 10 : 0;
+      if (active) {
+        ctx.fillStyle = "rgba(0,0,0,.28)";
+        ctx.beginPath(); ctx.arc(0, 0, f.r + 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.font = `${Math.max(14, f.r * 1.7)}px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(f.flag, 0, 0);
+      ctx.restore();
     }
-    if(action === "edit"){
-      $("#taskId").value = task.id;
-      $("#taskTitle").value = task.title;
-      $("#taskSubject").value = task.subject;
-      $("#taskPriority").value = task.priority;
-      switchView("tasks");
+
+    if (state.phase === "countdown") {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,210,63,.12)";
+      ctx.fillRect(0, 0, arena.w, arena.h);
+      ctx.restore();
     }
-  });
+  }
 
-  $$(".preset-btn").forEach(btn => btn.addEventListener("click", ()=>{
-    $$(".preset-btn").forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-    state.timer.workMinutes = Number(btn.dataset.minutes);
-    state.timer.breakMinutes = Number(btn.dataset.break);
-    state.timer.phase = "focus";
-    state.timer.remaining = state.timer.workMinutes * 60;
-    if(state.timer.running) state.timer.endAt = Date.now() + state.timer.remaining*1000;
-    autosave();
-  }));
+  function loop(t) {
+    const dt = Math.min(32, t - state.lastTime || 16);
+    state.lastTime = t;
+    simulate(dt);
+    drawArena();
+    syncGrid();
+    requestAnimationFrame(loop);
+  }
 
-  $("#applyCustomTimer").addEventListener("click", ()=>{
-    const w = Number($("#customWork").value || 25);
-    const b = Number($("#customBreak").value || 5);
-    state.timer.workMinutes = w;
-    state.timer.breakMinutes = b;
-    state.timer.phase = "focus";
-    state.timer.remaining = w * 60;
-    if(state.timer.running) state.timer.endAt = Date.now() + state.timer.remaining*1000;
-    autosave();
-    toast("Custom timer applied");
-  });
+  function setSpeed(s) { settings.speed = s; syncUI(); saveSettings(); }
+  function applySettingsFromUI() {
+    settings.autoMode = els.autoMode.checked;
+    settings.soundOn = els.soundOn.checked;
+    settings.voiceOn = els.voiceOn.checked;
+    settings.musicOn = els.musicOn.checked;
+    settings.volume = Number(els.volume.value) / 100;
+    settings.flagCount = Number(els.flagCount.value);
+    settings.battleSpeed = els.battleSpeed.value;
+    settings.collisionIntensity = els.collisionIntensity.value;
+    if (masterGain) masterGain.gain.value = settings.volume;
+    if (musicGain) musicGain.gain.value = settings.musicOn ? 0.03 : 0;
+    if (!settings.musicOn) stopMusic(); else if (unlockedAudio) startMusic();
+    syncUI(); saveSettings();
+  }
 
-  $("#startTimer").onclick = () => {
-    stopAlarm();
-    state.timer.endAt = Date.now() + state.timer.remaining*1000;
-    state.timer.running = true;
-    startTimerLoop();
-    requestWakeLock();
-    autosave();
-  };
-  $("#pauseTimer").onclick = () => {
-    evaluateTimer(false);
-    state.timer.running = false;
-    state.timer.endAt = null;
-    releaseWakeLock();
-    autosave();
-  };
-  $("#resumeTimer").onclick = () => {
-    stopAlarm();
-    state.timer.endAt = Date.now() + state.timer.remaining*1000;
-    state.timer.running = true;
-    startTimerLoop();
-    requestWakeLock();
-    autosave();
-  };
-  $("#resetTimer").onclick = () => {
-    stopAlarm();
-    state.timer.running = false;
-    state.timer.endAt = null;
-    state.timer.phase = "focus";
-    state.timer.remaining = state.timer.workMinutes * 60;
-    releaseWakeLock();
-    autosave();
-  };
-  $("#stopAlarm").onclick = stopAlarm;
+  function togglePause(p) { state.paused = p; }
 
-  $("#saveCalendarEntry").onclick = ()=>{
-    state.calendar[state.selectedDate] = {
-      studyHours: Number($("#calendarStudyHours").value || 0),
-      notes: $("#calendarNotes").value.trim()
-    };
-    autosave();
-    toast("Calendar entry saved");
+  els.startBtn.onclick = () => { unlockAudio(); if (audioCtx?.state === "suspended") audioCtx.resume(); if (settings.musicOn) startMusic(); startTournament(); };
+  els.pauseBtn.onclick = () => togglePause(true);
+  els.resumeBtn.onclick = () => togglePause(false);
+  els.restartBtn.onclick = () => startTournament();
+  els.fsBtn.onclick = async () => {
+    const el = document.documentElement;
+    try { if (!document.fullscreenElement) await el.requestFullscreen(); else await document.exitFullscreen(); } catch {}
   };
 
-  $("#prevMonth").onclick = ()=>{ state.currentMonth--; if(state.currentMonth < 0){ state.currentMonth = 11; state.currentYear--; } autosave(); };
-  $("#nextMonth").onclick = ()=>{ state.currentMonth++; if(state.currentMonth > 11){ state.currentMonth = 0; state.currentYear++; } autosave(); };
+  [els.autoMode, els.soundOn, els.voiceOn, els.musicOn, els.volume, els.flagCount, els.battleSpeed, els.collisionIntensity].forEach(el => el.addEventListener("change", applySettingsFromUI));
+  els.volume.addEventListener("input", () => { els.volumeVal.textContent = `${els.volume.value}%`; applySettingsFromUI(); });
+  els.speedBtns.forEach(btn => btn.onclick = () => { els.speedBtns.forEach(b => b.classList.remove("active")); btn.classList.add("active"); setSpeed(Number(btn.dataset.speed)); });
 
-  $("#exportData").onclick = ()=>{
-    const data = JSON.stringify({ ...state, timer: undefined }, null, 2);
-    const blob = new Blob([data], {type:"application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "constancy-checker-data.json";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
-
-  $("#importData").onchange = async (e)=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    Object.assign(state, parsed);
-    autosave();
-    toast("Data imported");
-  };
-
-  $("#clearData").onclick = ()=>{
-    if(confirm("Clear all saved study data? This cannot be undone.")){
-      localStorage.removeItem(storageKey());
-      location.reload();
-    }
-  };
-
-  $("#fontSize").oninput = (e)=>{ state.settings.fontSize = Number(e.target.value); autosave(); };
-  $$('input[name="theme"]').forEach(r=> r.addEventListener("change", e => { state.settings.theme = e.target.value; autosave(); }));
-  $("#resetSettings").onclick = ()=>{ state.settings = { theme:"dark", fontSize:16 }; autosave(); };
-
-  document.addEventListener("visibilitychange", ()=>{
-    if(!document.hidden){
-      evaluateTimer(true);
-      if(state.timer.running) requestWakeLock();
-      renderAll();
-    }
-  });
-}
-
-function toast(msg){
-  const t = $("#toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"), 1800);
-}
-
-function initNotifications(){
-  if("Notification" in window && Notification.permission === "default"){
-    Notification.requestPermission();
-  }
-}
-
-// Runs once, right after a student successfully logs in / registers.
-// (This used to be called on page load directly — now it's gated by auth,
-// see the "AUTH BOOTSTRAP" section at the bottom of this file.)
-function initApp(){
-  loadState();
-  bindEvents();
-  initNotifications();
-  if(!state.timer.remaining) state.timer.remaining = state.timer.workMinutes * 60;
-
-  if(state.timer.running && state.timer.endAt){
-    // catch up on any time that passed while the page was closed/backgrounded
-    evaluateTimer(true);
-  }else if(state.timer.running && !state.timer.endAt){
-    state.timer.endAt = Date.now() + state.timer.remaining*1000;
-  }
-
-  startTimerLoop();
-  if(state.timer.running) requestWakeLock();
-  renderAll();
-  switchView("home");
-  setInterval(renderClock, 1000);
-  window.addEventListener("beforeunload", saveState);
-
-  // --- Activity tracking: website opened, plus ongoing idle/heartbeat sync ---
-  bindIdleDetection();
-  startHeartbeat();
-  syncActivityIfChanged();
-
-  // Best-effort "website closed" signal. Browsers can kill the page before
-  // this finishes, so the Admin Dashboard also treats a stale lastSeen
-  // (see ADMIN_STALE_MS below) as offline regardless of this signal.
-  window.addEventListener("pagehide", ()=>{
-    if(currentStudent){
-      updateStudentActivity(currentStudent.uid, {
-        status: "offline",
-        currentTimer: formatTime(state.timer.remaining)
-      });
-    }
-  });
-}
-
-/* =============================================================================
-   AUTH SCREEN — Login / Register / Registration-success popup
-============================================================================= */
-function showAuthScreen(){
-  $("#authScreen").hidden = false;
-  $("#appShell").hidden = true;
-}
-function showApp(){
-  $("#authScreen").hidden = true;
-  $("#appShell").hidden = false;
-}
-function setAuthError(msg){
-  const el = $("#authError");
-  if(!msg){ el.hidden = true; el.textContent = ""; return; }
-  el.hidden = false;
-  el.textContent = msg;
-}
-function setAuthTab(tab){
-  $$(".auth-tab").forEach(b => b.classList.toggle("active", b.dataset.authTab === tab));
-  $("#loginForm").hidden = tab !== "login";
-  $("#registerForm").hidden = tab !== "register";
-  setAuthError("");
-}
-
-function openRegistrationSuccessModal(profile){
-  $("#modalStudentId").textContent = profile.studentId;
-  $("#registrationSuccessModal").hidden = false;
-  // Stash the pending profile until the student confirms they wrote it down.
-  $("#registrationSuccessModal").dataset.pendingUid = profile.uid;
-}
-
-function bindAuthEvents(){
-  $$(".auth-tab").forEach(btn => btn.addEventListener("click", () => setAuthTab(btn.dataset.authTab)));
-
-  $("#loginForm").addEventListener("submit", async (e)=>{
-    e.preventDefault();
-    setAuthError("");
-    const studentId = $("#loginStudentId").value;
-    const password = $("#loginPassword").value;
-    const btn = $("#loginSubmit");
-    btn.disabled = true; btn.textContent = "Logging in...";
-    try{
-      const profile = await loginStudent(studentId, password);
-      currentStudent = profile;
-      showApp();
-      initApp();
-    }catch(err){
-      setAuthError(friendlyAuthError(err));
-    }finally{
-      btn.disabled = false; btn.textContent = "Log In";
-    }
-  });
-
-  $("#registerForm").addEventListener("submit", async (e)=>{
-    e.preventDefault();
-    setAuthError("");
-    const name = $("#registerName").value;
-    const password = $("#registerPassword").value;
-    const btn = $("#registerSubmit");
-    if(password.length < 6){
-      setAuthError("Password should be at least 6 characters.");
-      return;
-    }
-    btn.disabled = true; btn.textContent = "Creating account...";
-    try{
-      const profile = await registerStudent(name, password);
-      openRegistrationSuccessModal(profile);
-      e.target.reset();
-    }catch(err){
-      setAuthError(friendlyAuthError(err));
-    }finally{
-      btn.disabled = false; btn.textContent = "Create Account";
-    }
-  });
-
-  $("#copyStudentIdBtn").addEventListener("click", async ()=>{
-    const id = $("#modalStudentId").textContent;
-    try{
-      await navigator.clipboard.writeText(id);
-    }catch(e){
-      // Fallback for browsers without Clipboard API access
-      const ta = document.createElement("textarea");
-      ta.value = id;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    }
-    toast("Student ID copied");
-  });
-
-  $("#confirmWrittenDownBtn").addEventListener("click", async ()=>{
-    const uid = $("#registrationSuccessModal").dataset.pendingUid;
-    $("#registrationSuccessModal").hidden = true;
-    currentStudent = await getStudentProfile(uid);
-    showApp();
-    initApp();
-  });
-
-  $("#logoutBtn").addEventListener("click", async ()=>{
-    stopHeartbeat();
-    if(currentStudent){
-      await updateStudentActivity(currentStudent.uid, { status:"offline" });
-    }
-    await logoutStudent();
-    location.reload();
-  });
-}
-
-function friendlyAuthError(err){
-  const msg = (err && err.message) || "Something went wrong. Please try again.";
-  if(msg.includes("auth/invalid-credential") || msg.includes("auth/wrong-password")) return "Incorrect Student ID or password.";
-  if(msg.includes("auth/weak-password")) return "Please choose a longer password (6+ characters).";
-  if(msg.includes("couldn't find that Student ID")) return "We couldn't find that Student ID.";
-  return msg;
-}
-
-/* =============================================================================
-   ADMIN DASHBOARD
-   -----------------------------------------------------------------------------
-   Hidden behind a small "Admin" button + a plain password check. Note: this
-   password check happens in the browser, so it only hides the dashboard's
-   *interface* — it is not a substitute for real server-side security. See
-   the README for how to lock the underlying Firestore data down further if
-   that matters for your use case.
-============================================================================= */
-const ADMIN_PASSWORD = "admin4321";
-const ADMIN_STALE_MS = 45 * 1000; // if lastSeen is older than this, treat as offline
-                                  // even if the stored status says otherwise —
-                                  // covers tabs closed without a clean "offline" signal.
-
-let adminUnsubscribe = null;
-let adminStudents = [];
-let adminSearchTerm = "";
-let adminFilterStatus = "all";
-let adminSortBy = "studyTime";
-
-function toDateSafe(ts){
-  if(!ts) return null;
-  if(typeof ts.toDate === "function") return ts.toDate();
-  return null;
-}
-function formatDateTime(ts){
-  const d = toDateSafe(ts);
-  if(!d) return "—";
-  return d.toLocaleString(undefined, { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
-}
-function effectiveStatus(student){
-  const lastSeen = toDateSafe(student.lastSeen);
-  const stale = !lastSeen || (Date.now() - lastSeen.getTime() > ADMIN_STALE_MS);
-  if(stale) return "offline";
-  return student.status || "offline";
-}
-
-function bindAdminEvents(){
-  $("#adminTrigger").addEventListener("click", ()=>{
-    $("#adminPasswordInput").value = "";
-    $("#adminPasswordError").hidden = true;
-    $("#adminPasswordModal").hidden = false;
-    $("#adminPasswordInput").focus();
-  });
-
-  $("#adminPasswordCancel").addEventListener("click", ()=>{
-    $("#adminPasswordModal").hidden = true;
-  });
-
-  $("#adminPasswordSubmit").addEventListener("click", openAdminDashboard);
-  $("#adminPasswordInput").addEventListener("keydown", (e)=>{
-    if(e.key === "Enter") openAdminDashboard();
-  });
-
-  $("#adminCloseBtn").addEventListener("click", closeAdminDashboard);
-
-  $("#adminSearch").addEventListener("input", (e)=>{
-    adminSearchTerm = e.target.value.trim().toLowerCase();
-    renderAdminDashboard();
-  });
-  $("#adminFilter").addEventListener("change", (e)=>{
-    adminFilterStatus = e.target.value;
-    renderAdminDashboard();
-  });
-  $("#adminSort").addEventListener("change", (e)=>{
-    adminSortBy = e.target.value;
-    renderAdminDashboard();
-  });
-}
-
-function openAdminDashboard(){
-  const entered = $("#adminPasswordInput").value;
-  if(entered !== ADMIN_PASSWORD){
-    $("#adminPasswordError").hidden = false;
-    $("#adminPasswordError").textContent = "Incorrect password.";
-    return;
-  }
-  $("#adminPasswordModal").hidden = true;
-  $("#adminDashboard").hidden = false;
-  if(!adminUnsubscribe){
-    adminUnsubscribe = watchAllStudents((students)=>{
-      adminStudents = students;
-      renderAdminDashboard();
-    });
-  }
-}
-
-function closeAdminDashboard(){
-  $("#adminDashboard").hidden = true;
-  if(adminUnsubscribe){ adminUnsubscribe(); adminUnsubscribe = null; }
-}
-
-function renderAdminDashboard(){
-  const withStatus = adminStudents.map(s => ({ ...s, _status: effectiveStatus(s) }));
-
-  $("#adminTotalStudents").textContent = withStatus.length;
-  $("#adminOnlineStudents").textContent = withStatus.filter(s=>s._status==="online").length;
-  $("#adminOfflineStudents").textContent = withStatus.filter(s=>s._status==="offline").length;
-  $("#adminIdleStudents").textContent = withStatus.filter(s=>s._status==="idle").length;
-  $("#adminStudyingStudents").textContent = withStatus.filter(s=>s._status==="studying").length;
-
-  let list = withStatus;
-  if(adminFilterStatus !== "all") list = list.filter(s => s._status === adminFilterStatus);
-  if(adminSearchTerm){
-    list = list.filter(s =>
-      (s.name||"").toLowerCase().includes(adminSearchTerm) ||
-      (s.studentId||"").toLowerCase().includes(adminSearchTerm)
-    );
-  }
-
-  const sortKey = { studyTime:"totalStudyHours", completedTasks:"completedTasks", studyStreak:"studyStreak" }[adminSortBy];
-  list = [...list].sort((a,b) => (b[sortKey]||0) - (a[sortKey]||0));
-
-  const rows = list.map(s => [
-    escapeHtml(s.name || "—"),
-    s.studentId || "—",
-    capitalize(s._status),
-    s.currentTimer || "—",
-    formatMinutes(s.todayStudyTime || 0),
-    formatMinutes(s.weeklyStudyTime || 0),
-    formatMinutes(s.monthlyStudyTime || 0),
-    `${(s.totalStudyHours || 0).toFixed(1)}h`,
-    s.completedTasks || 0,
-    `${s.studyStreak || 0} days`,
-    formatDateTime(s.lastActiveTime),
-    formatDateTime(s.lastLogin),
-    formatDateTime(s.lastSeen),
-    formatDateTime(s.registrationDate)
-  ]);
-
-  $("#adminStudentTable").innerHTML = rows.length
-    ? renderTable(
-        ["Name","Student ID","Status","Timer","Today","Weekly","Monthly","Total Hours","Tasks Done","Streak","Last Active","Last Login","Last Seen","Registered"],
-        rows
-      )
-    : `<p class="empty-note">No students match this view.</p>`;
-}
-
-function capitalize(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
-
-/* =============================================================================
-   AUTH BOOTSTRAP
-   -----------------------------------------------------------------------------
-   The very first thing that runs. Shows the login/register screen, wires up
-   the Admin button (available even before login, per spec), and lets
-   Firebase tell us if a session is already active (e.g. a page refresh)
-   so the student doesn't have to log in again every time.
-============================================================================= */
-bindAuthEvents();
-bindAdminEvents();
-
-watchAuthState(async (user)=>{
-  if(user){
-    currentStudent = await getStudentProfile(user.uid);
-    if(currentStudent){
-      showApp();
-      initApp();
-      return;
-    }
-  }
-  currentStudent = null;
-  showAuthScreen();
-});
+  window.addEventListener("resize", resize);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) state.paused = true; });
+  loadSettings(); resize(); syncUI(); updateLeaderboard(); requestAnimationFrame(loop);
+})();
