@@ -20,22 +20,22 @@ let flags = [];
 let activeFlags = [];
 let deadFlags = [];
 
-// রিং ঘূর্ণন ও স্পিড লজিক
-let whiteAngle = 0;       // সাদা রিংয়ের পজিশন
-let yellowAngle = 0;      // হলুদ আর্চের পজিশন
+// রিং ঘূর্ণন ও মাপ
+let whiteAngle = 0;       
+let yellowAngle = 0;      
 
-const gapSize = Math.PI / 4;       // সাদা রিংয়ের কাটা ফাঁকা জায়গা (~45 degree)
+const baseGapSize = Math.PI / 4;   // শুরুর ফাঁকা জায়গা (~45 degree)
 const yellowSize = Math.PI / 3;    // হলুদ দরজার মাপ (~60 degree)
 
-const whiteSpeed = 0.015; // সাদা রিংয়ের সাধারণ গতি
-const yellowSpeed = 0.045; // হলুদ রিংয়ের দ্রত গতি (White-এর চেয়ে ৩ গুণ ফাস্ট!)
+const whiteSpeed = 0.018; 
+const yellowSpeed = 0.050; // হলুদ আর্চের দ্রুত গতি
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 60; // ১ মিনিটের খেলা
+let roundDuration = 45; // ⏱️ ঠিক ৪৫ সেকেন্ডের রাউন্ড
 
 // Web Audio Unlocking System
 let audioCtx = null;
@@ -98,7 +98,7 @@ function speakWinner(name) {
   }
 }
 
-// ২৫০টি পতাকার ডাটা
+// ২৫০টি পতাকার লিস্ট
 const countryList = [
   ["IN","India","🇮🇳"], ["US","United States","🇺🇸"], ["GB","United Kingdom","🇬🇧"], 
   ["BD","Bangladesh","🇧🇩"], ["CM","Cameroon","🇨🇲"], ["BF","Burkina Faso","🇧🇫"],
@@ -146,7 +146,7 @@ function initGame() {
       id: i, code: country[0], name: country[1], emoji: country[2],
       x: arenaX + (Math.random() - 0.5) * (arenaR * 0.8),
       y: arenaY + (Math.random() - 0.5) * (arenaR * 0.8),
-      vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5,
+      vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
       r: 9, active: true
     };
     flags.push(flagObj);
@@ -208,7 +208,7 @@ function declareWinner(flag) {
         initGame();
         isPlaying = true;
         requestAnimationFrame(gameLoop);
-    }, 6000);
+    }, 5000);
 }
 
 function updateUI() {
@@ -251,17 +251,23 @@ function gameLoop() {
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
   
-  let timeRatio = elapsed / roundDuration;
-  let speedMult = 1 + (timeRatio * 1.5); 
+  // ৪৫ সেকেন্ডের মধ্যে গেম শেষ করার জন্য স্পিড এবং গ্যাপ সাইজ অ্যাডজাস্টমেন্ট
+  let timeRatio = Math.min(1, elapsed / roundDuration);
+  let currentGapSize = baseGapSize + (timeRatio * Math.PI * 1.1); // সময় বাড়লে গ্যাপ বড় হবে
+  let speedMult = 1.1 + (timeRatio * 2.5);                         // স্পিড দ্রুত বাড়বে
+
+  // সময় ৪০ সেকেন্ড পার হয়ে গেলে যদি একাধিক ফ্ল্যাগ থাকে, গ্যাপ আরও বড় করে দ্রুত বাদ দেওয়া হবে
+  if (elapsed > 40 && activeFlags.length > 2) {
+      currentGapSize = Math.PI * 1.4;
+  }
   
-  // সাদা রিং এবং ফাস্ট হলুদ আর্চের আলাদা ঘোরার লজিক
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
   yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   let gStart = whiteAngle;
-  let gEnd = normalizeAngle(whiteAngle + gapSize);
+  let gEnd = normalizeAngle(whiteAngle + currentGapSize);
   
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
@@ -281,26 +287,20 @@ function gameLoop() {
       let inGap = isAngleBetween(fAngle, gStart, gEnd);
 
       if (inGap) {
-          // চেক করছি হলুদ আর্চটি কি কাটা ফাঁকা জায়গাকে বন্ধ করে রেখেছে?
           let inYellow = isAngleBetween(fAngle, yStart, yEnd);
           
           if (inYellow) {
-              // হলুদ গেট বন্ধ! তাই ফ্ল্যাগ না পড়ে বাউন্স করবে (১-২ বার)
-              bounceFlag(f, dx, dy, dist);
+              bounceFlag(f, dx, dy, dist); // হলুদ গেট থাকলে বাউন্স
           } else {
-              // হলুদ গেট খোলা! ফ্ল্যাগ বাইরে পড়ে আউট হয়ে যাবে
-              if (dist > arenaR + 8) { 
-                eliminate(f); 
-              }
+              if (dist > arenaR + 6) { eliminate(f); } // গেট ফাঁকা থাকলে আউট
           }
       } else {
-          // সাদা রিংয়ের ওয়ালে ধাক্কা খেয়ে বাউন্স করবে
           bounceFlag(f, dx, dy, dist);
       }
     }
   }
 
-  // Dead Flags Physics (নিচে মাধ্যাকর্ষণে ছিটকে পড়া)
+  // Dead Flags Physics
   for (let f of deadFlags) {
       f.vy += 0.35;
       f.x += f.vx * 0.9;
@@ -315,16 +315,13 @@ function gameLoop() {
       if (f.x >= canvas.width - f.r) { f.x = canvas.width - f.r; f.vx *= -0.5; }
   }
 
-  // --- RENDER RINGS ---
-  
-  // ১. কাটা সাদা রিং আঁকা (Gap অংশটি ছাড়া বাকিটুকু)
+  // RENDER RINGS
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
-  // ২. হাই-স্পিড হলুদ আর্চ (Dynamic Gate)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
@@ -334,7 +331,7 @@ function gameLoop() {
   ctx.stroke();
   ctx.shadowBlur = 0; 
 
-  // Dead Flags (নিচে জমানো)
+  // Dead Flags Render
   ctx.font = "16px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -344,7 +341,7 @@ function gameLoop() {
   }
   ctx.globalAlpha = 1.0;
 
-  // Active Flags (রিংয়ের ভিতর)
+  // Active Flags Render
   ctx.font = "22px Arial";
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
@@ -353,6 +350,5 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// স্ক্রিনে টাচ করলেই অডিও সিস্টেম পুরোপুরি অ্যাক্টিভ হবে
 document.addEventListener("click", unlockAudio);
 document.addEventListener("touchstart", unlockAudio);
