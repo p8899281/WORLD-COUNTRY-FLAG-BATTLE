@@ -22,8 +22,7 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-// 📐 সাদা রিংয়ের গ্যাপ বড় করা হলো এবং নীল দরজার সাইজ ছোট করা হলো
-const gapSize = Math.PI / 3.4;    // বড় কাটা জায়গা (~53 degree)
+const gapSize = Math.PI / 3.4;     // বড় কাটা ফাঁকা জায়গা (~53 degree)
 const yellowSize = Math.PI / 4.2;  // ছোট নীল আর্চ (~43 degree)
 
 const whiteSpeed = 0.018; 
@@ -285,12 +284,13 @@ function declareWinner(flag) {
     }, 5000);
 }
 
-// 📊 প্রোগ্রেস বার আপডেটার
+// 🟡 স্লাইডার পজিশন ও কাউন্ট আপডেট
 function updateUI() {
   if (els.activeCount && els.progressBar) {
     els.activeCount.innerText = activeFlags.length;
-    let percent = (activeFlags.length / TOTAL_FLAGS) * 100;
-    els.progressBar.style.width = percent + "%";
+    let ratio = activeFlags.length / TOTAL_FLAGS;
+    let leftPos = (1 - ratio) * 85; // % position left to right
+    els.progressBar.style.left = leftPos + "%";
   }
 }
 
@@ -409,7 +409,7 @@ function gameLoop() {
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
-  // 2. 🔵 নীল ঘূর্ণায়মান আর্চ (Neon Blue Gate)
+  // 2. 🔵 ছোট নীল নিয়ন আর্চ (Neon Blue Gate)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
