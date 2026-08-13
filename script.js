@@ -4,6 +4,8 @@ const ctx = canvas.getContext("2d");
 const els = {
   app: document.getElementById("app"),
   modeSelector: document.getElementById("mode-selector"),
+  activeCount: document.getElementById("activeCount"),
+  progressBar: document.getElementById("progressBar"),
   winnerOverlay: document.getElementById("winnerOverlay"),
   winnerName: document.getElementById("winnerName"),
   winnerFlagBox: document.getElementById("winnerFlagBox"),
@@ -20,8 +22,9 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const gapSize = Math.PI / 4.5;    
-const yellowSize = Math.PI / 3;   
+// 📐 সাদা রিংয়ের গ্যাপ বড় করা হলো এবং নীল দরজার সাইজ ছোট করা হলো
+const gapSize = Math.PI / 3.4;    // বড় কাটা জায়গা (~53 degree)
+const yellowSize = Math.PI / 4.2;  // ছোট নীল আর্চ (~43 degree)
 
 const whiteSpeed = 0.018; 
 const yellowSpeed = 0.052; 
@@ -220,6 +223,7 @@ function initGame() {
     flags.push(flagObj);
   }
   activeFlags = [...flags];
+  updateUI();
   updateLeaderboard();
 }
 
@@ -253,6 +257,7 @@ function eliminate(flag) {
   flag.settled = false;
 
   deadFlags.push(flag); 
+  updateUI();
   
   if (activeFlags.length === 1) {
       declareWinner(activeFlags[0]);
@@ -278,6 +283,15 @@ function declareWinner(flag) {
         startBGM(); 
         requestAnimationFrame(gameLoop);
     }, 5000);
+}
+
+// 📊 প্রোগ্রেস বার আপডেটার
+function updateUI() {
+  if (els.activeCount && els.progressBar) {
+    els.activeCount.innerText = activeFlags.length;
+    let percent = (activeFlags.length / TOTAL_FLAGS) * 100;
+    els.progressBar.style.width = percent + "%";
+  }
 }
 
 function updateLeaderboard() {
@@ -388,18 +402,20 @@ function gameLoop() {
       }
   }
 
+  // 1. সাদা রিং
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
+  // 2. 🔵 নীল ঘূর্ণায়মান আর্চ (Neon Blue Gate)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
-  ctx.strokeStyle = "#ffd23f";
+  ctx.strokeStyle = "#00d2ff";
   ctx.shadowBlur = 14;
-  ctx.shadowColor = "#ffd23f";
+  ctx.shadowColor = "#00d2ff";
   ctx.stroke();
   ctx.shadowBlur = 0; 
 
