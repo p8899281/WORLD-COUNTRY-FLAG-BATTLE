@@ -20,22 +20,23 @@ let flags = [];
 let activeFlags = [];
 let deadFlags = [];
 
-// রিং ঘূর্ণন ও মাপ
+// রিং ঘূর্ণন ও ফিক্সড মাপ
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const baseGapSize = Math.PI / 4;   // শুরুর ফাঁকা জায়গা (~45 degree)
-const yellowSize = Math.PI / 3;    // হলুদ দরজার মাপ (~60 degree)
+// 🔒 ফাঁকা জায়গাটি এখন সবসময় ফিক্সড (কখনোই বড় হবে না)
+const gapSize = Math.PI / 4.5;    // সুন্দর প্রাকৃতিক ফাঁকা সাইজ (~40 degree)
+const yellowSize = Math.PI / 3;   // হলুদ দরজার মাপ (~60 degree)
 
 const whiteSpeed = 0.018; 
-const yellowSpeed = 0.050; // হলুদ আর্চের দ্রুত গতি
+const yellowSpeed = 0.052; // হলুদ গেট খুব ফাস্ট ঘুরবে
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 45; // ⏱️ ঠিক ৪৫ সেকেন্ডের রাউন্ড
+let roundDuration = 45; // ⏱️ ঠিক ৪৫ সেকেন্ডের খেলা
 
 // Web Audio Unlocking System
 let audioCtx = null;
@@ -98,7 +99,7 @@ function speakWinner(name) {
   }
 }
 
-// ২৫০টি পতাকার লিস্ট
+// ২৫০টি পতাকার ডাটা
 const countryList = [
   ["IN","India","🇮🇳"], ["US","United States","🇺🇸"], ["GB","United Kingdom","🇬🇧"], 
   ["BD","Bangladesh","🇧🇩"], ["CM","Cameroon","🇨🇲"], ["BF","Burkina Faso","🇧🇫"],
@@ -251,15 +252,9 @@ function gameLoop() {
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
   
-  // ৪৫ সেকেন্ডের মধ্যে গেম শেষ করার জন্য স্পিড এবং গ্যাপ সাইজ অ্যাডজাস্টমেন্ট
+  // ৪৫ সেকেন্ডে গেম শেষ করার জন্য গতি এবং ধাক্কার ফিজিক্স অ্যাডজাস্টমেন্ট
   let timeRatio = Math.min(1, elapsed / roundDuration);
-  let currentGapSize = baseGapSize + (timeRatio * Math.PI * 1.1); // সময় বাড়লে গ্যাপ বড় হবে
-  let speedMult = 1.1 + (timeRatio * 2.5);                         // স্পিড দ্রুত বাড়বে
-
-  // সময় ৪০ সেকেন্ড পার হয়ে গেলে যদি একাধিক ফ্ল্যাগ থাকে, গ্যাপ আরও বড় করে দ্রুত বাদ দেওয়া হবে
-  if (elapsed > 40 && activeFlags.length > 2) {
-      currentGapSize = Math.PI * 1.4;
-  }
+  let speedMult = 1.2 + (timeRatio * 2.8); // গতি ধীরে ধীরে বাড়বে
   
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
   yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
@@ -267,19 +262,25 @@ function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   let gStart = whiteAngle;
-  let gEnd = normalizeAngle(whiteAngle + currentGapSize);
+  let gEnd = normalizeAngle(whiteAngle + gapSize); // ফিক্সড গ্যাপ
   
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
   // Active Flags Physics
   for (let f of activeFlags) {
-    f.x += f.vx * speedMult;
-    f.y += f.vy * speedMult;
-    
+    // কেন্দ্র থেকে বাইরের দিকে নিয়ে যাওয়ার ফোর্স (যাতে ৪-৫ জন পতাকা আটকে না থাকে)
     let dx = f.x - arenaX;
     let dy = f.y - arenaY;
-    let dist = Math.hypot(dx, dy);
+    let dist = Math.hypot(dx, dy) || 1;
+    
+    if (dist < arenaR * 0.5) {
+        f.vx += (dx / dist) * 0.15 * speedMult;
+        f.vy += (dy / dist) * 0.15 * speedMult;
+    }
+
+    f.x += f.vx * (speedMult * 0.4);
+    f.y += f.vy * (speedMult * 0.4);
     
     if (dist > arenaR - f.r) {
       let fAngle = normalizeAngle(Math.atan2(dy, dx));
@@ -290,9 +291,9 @@ function gameLoop() {
           let inYellow = isAngleBetween(fAngle, yStart, yEnd);
           
           if (inYellow) {
-              bounceFlag(f, dx, dy, dist); // হলুদ গেট থাকলে বাউন্স
+              bounceFlag(f, dx, dy, dist); 
           } else {
-              if (dist > arenaR + 6) { eliminate(f); } // গেট ফাঁকা থাকলে আউট
+              if (dist > arenaR + 6) { eliminate(f); } // ফাঁকা জায়গা পেলে অনায়াসে বের হয়ে যাবে
           }
       } else {
           bounceFlag(f, dx, dy, dist);
@@ -315,13 +316,16 @@ function gameLoop() {
       if (f.x >= canvas.width - f.r) { f.x = canvas.width - f.r; f.vx *= -0.5; }
   }
 
-  // RENDER RINGS
+  // --- RENDER RINGS ---
+  
+  // ১. কাটা সাদা রিং (সবসময় সুন্দর স্থির ফাঁকা সাইজ থাকবে)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
+  // ২. হলুদ আর্চ (গেট)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
