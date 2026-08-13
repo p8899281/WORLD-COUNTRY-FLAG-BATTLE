@@ -6,7 +6,6 @@ const els = {
   modeSelector: document.getElementById("mode-selector"),
   activeCount: document.getElementById("activeCount"),
   progressBar: document.getElementById("progressBar"),
-  flagGrid: document.getElementById("flagGrid"),
   winnerOverlay: document.getElementById("winnerOverlay"),
   winnerName: document.getElementById("winnerName"),
   winnerFlagBox: document.getElementById("winnerFlagBox"),
@@ -205,14 +204,13 @@ function resizeCanvas() {
   canvas.width = rect.width;
   canvas.height = rect.height;
   arenaX = canvas.width / 2;
-  arenaY = canvas.height / 2 - 30;
+  arenaY = canvas.height / 2 - 50; // রিং একটু ওপরে রাখা হলো যাতে নিচে ফ্ল্যাগ জমার অনেক জায়গা থাকে
   arenaR = Math.min(arenaX, arenaY) - 25; 
 }
 
 function initGame() {
   flags = [];
   deadFlags = [];
-  els.flagGrid.innerHTML = "";
   startTime = Date.now();
   
   for (let i = 0; i < TOTAL_FLAGS; i++) {
@@ -222,15 +220,9 @@ function initGame() {
       x: arenaX + (Math.random() - 0.5) * (arenaR * 0.8),
       y: arenaY + (Math.random() - 0.5) * (arenaR * 0.8),
       vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
-      r: 9, active: true
+      r: 9, active: true, settled: false, targetX: 0, targetY: 0
     };
     flags.push(flagObj);
-    
-    let span = document.createElement("div");
-    span.className = "flag-icon";
-    span.id = "grid-flag-" + i;
-    span.innerText = country[2];
-    els.flagGrid.appendChild(span);
   }
   activeFlags = [...flags];
   updateUI();
@@ -254,11 +246,20 @@ function eliminate(flag) {
   playSound("out");
   
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
+  
+  // 🧱 নিচে স্লটভিত্তিক পরপর সাজানোর পজিশন গণনা
+  const slotIndex = deadFlags.length;
+  const itemWidth = 22;
+  const itemsPerRow = Math.max(10, Math.floor((canvas.width - 20) / itemWidth));
+  const col = slotIndex % itemsPerRow;
+  const row = Math.floor(slotIndex / itemsPerRow);
+  
+  const startX = (canvas.width - (itemsPerRow * itemWidth)) / 2 + 11;
+  flag.targetX = startX + col * itemWidth;
+  flag.targetY = canvas.height - 12 - (row * 18);
+  flag.settled = false;
+
   deadFlags.push(flag); 
-  
-  const gridEl = document.getElementById("grid-flag-" + flag.id);
-  if (gridEl) gridEl.classList.add("eliminated");
-  
   updateUI();
   
   if (activeFlags.length === 1) {
@@ -386,24 +387,24 @@ function gameLoop() {
     }
   }
 
-  // 🧱 Dead Flags Physics (নিচে পড়ে সুন্দরভাবে জমা হওয়া)
+  // 🧱 Dead Flags Physics (পরপর বাক্সের মতো সুন্দর জমা হওয়া)
   for (let f of deadFlags) {
-      f.vy += 0.35; // Gravity
-      f.x += f.vx * 0.85;
-      f.y += f.vy;
-      
-      // স্ক্রিনের একদম নিচে সুন্দরভাবে জমা হওয়া
-      const floorY = canvas.height - f.r - 2;
-      if (f.y >= floorY) {
-          f.y = floorY;
-          f.vy *= -0.2; // মৃদু বাউন্স
-          f.vx *= 0.7;  // থামানো
+      if (!f.settled) {
+          f.vy += 0.4; // Gravity
+          f.x += (f.targetX - f.x) * 0.12;
+          f.y += f.vy;
+          
+          if (f.y >= f.targetY) {
+              f.y = f.targetY;
+              f.x = f.targetX;
+              f.settled = true;
+              f.vx = 0;
+              f.vy = 0;
+          }
       }
-      if (f.x <= f.r) { f.x = f.r; f.vx *= -0.5; }
-      if (f.x >= canvas.width - f.r) { f.x = canvas.width - f.r; f.vx *= -0.5; }
   }
 
-  // --- RENDER RINGS ---
+  // RENDER RINGS
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
@@ -419,11 +420,11 @@ function gameLoop() {
   ctx.stroke();
   ctx.shadowBlur = 0; 
 
-  // 🎨 Dead Flags Render (নিচে ১০০% রঙিন এবং উজ্জ্বল থাকবে)
-  ctx.font = "18px Arial";
+  // 🎨 Dead Flags Render (নিচে সারিবদ্ধভাবে উজ্জ্বল রঙে জমা হবে)
+  ctx.font = "16px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.globalAlpha = 1.0; // 👈 ১০০% ফুল কালার
+  ctx.globalAlpha = 1.0; 
   for (let f of deadFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
