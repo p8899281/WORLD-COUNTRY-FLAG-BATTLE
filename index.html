@@ -3,122 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>World Country Flag Battle</title>
+  <title>Flags Battle Pro</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
-    <header class="topbar glass">
-      <div class="brand">
-        <div class="brand-title">🌍 WORLD COUNTRY FLAG BATTLE</div>
-        <div class="brand-sub">Automated Tournament • Live Arena • YouTube Ready</div>
+
+  <!-- Mode Selection Screen -->
+  <div id="mode-selector" class="overlay-screen">
+    <div class="mode-box">
+      <h2>SELECT DEVICE MODE</h2>
+      <div class="mode-btns">
+        <button onclick="startGame('mobile')">📱 MOBILE MODE</button>
+        <button onclick="startGame('pc')">💻 PC MODE</button>
       </div>
-      <div class="status-row">
-        <div class="pill">STAGE: <span id="stageText">QUALIFYING</span></div>
-        <div class="pill">ROUND: <span id="roundText">1</span></div>
-        <div class="pill">ACTIVE FLAGS: <span id="activeText">250</span></div>
-      </div>
+    </div>
+  </div>
+
+  <!-- Main Game UI (Hidden initially) -->
+  <div id="app" class="hidden">
+    <header class="top-header">
+      <div class="title">250-EXTENDED FLAGS BATTLE</div>
+      <div class="subtitle">ROUND <span id="roundText">1</span> ⏱ <span id="timerText">00:00</span> · QUALIFYING</div>
     </header>
 
-    <main class="layout">
-      <section class="arena-panel glass">
-        <div class="arena-head">
-          <div id="announcement" class="announcement">Press START to begin the tournament.</div>
-          <div class="mini-stats">
-            <span id="speedLabel">×1</span>
-            <span id="autoLabel">AUTO ON</span>
-          </div>
-        </div>
+    <div class="qualified-board">
+      <div class="board-title">QUALIFIED FOR FINAL</div>
+      <div class="board-list" id="qualifiedList">
+        <!-- Ranks will appear here -->
+      </div>
+    </div>
 
-        <div class="arena-wrap">
-          <canvas id="arena"></canvas>
-          <div id="overlayStage" class="overlay-stage hidden"></div>
-          <div id="overlayWinner" class="overlay-winner hidden">
-            <div class="winner-kicker">🏆 WORLD CHAMPION 🏆</div>
-            <div class="winner-flag" id="winnerFlag">🏳️</div>
-            <div class="winner-name" id="winnerName">Country</div>
-          </div>
-        </div>
+    <div class="arena-info">
+      <span class="mod-text">[ NEW MOD ]</span>
+      <span class="qualifying-text">QUALIFYING · <span id="timeText2">00:00</span></span>
+    </div>
 
-        <div class="bottom-tracker">
-          <div class="tracker-head">
-            <div id="trackerCount">250 / 250 FLAGS</div>
-            <div class="tracker-right">Tournament Tracker</div>
-          </div>
-          <div id="flagGrid" class="flag-grid"></div>
-        </div>
-      </section>
+    <div class="arena-container">
+      <canvas id="arena"></canvas>
+      <div id="winnerOverlay" class="winner-overlay hidden">
+        <div class="round-winner-text">ROUND WINNER</div>
+        <div class="winner-flag-box" id="winnerFlagBox">🏳️</div>
+        <div class="winner-name" id="winnerName">Country</div>
+      </div>
+    </div>
 
-      <aside class="sidebar">
-        <section class="glass panel controls">
-          <h2>Controls</h2>
-          <div class="btn-row">
-            <button id="startBtn">START</button>
-            <button id="pauseBtn">PAUSE</button>
-            <button id="resumeBtn">RESUME</button>
-          </div>
-          <div class="btn-row">
-            <button id="restartBtn">RESTART</button>
-            <button id="fsBtn">FULLSCREEN</button>
-          </div>
-          <div class="toggle-grid">
-            <label><input type="checkbox" id="autoMode" checked> AUTO MODE</label>
-            <label><input type="checkbox" id="soundOn" checked> SOUND ON</label>
-            <label><input type="checkbox" id="voiceOn" checked> VOICE ON</label>
-            <label><input type="checkbox" id="musicOn" checked> MUSIC ON</label>
-          </div>
+    <div class="progress-section">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="progress-text"><span id="activeCount">250</span> / 250 FLAGS</div>
+    </div>
 
-          <div class="slider-box">
-            <div class="slider-head"><span>MASTER VOLUME</span><span id="volumeVal">70%</span></div>
-            <input type="range" id="volume" min="0" max="100" value="70" />
-          </div>
-
-          <div class="slider-box">
-            <div class="slider-head"><span>SPEED</span><span id="speedVal">×1</span></div>
-            <div class="speed-row">
-              <button class="speedBtn active" data-speed="1">×1</button>
-              <button class="speedBtn" data-speed="2">×2</button>
-              <button class="speedBtn" data-speed="4">×4</button>
-            </div>
-          </div>
-        </section>
-
-        <section class="glass panel settings">
-          <h2>Settings</h2>
-          <div class="setting">
-            <label for="flagCount">Number of flags</label>
-            <select id="flagCount">
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="150">150</option>
-              <option value="200">200</option>
-              <option value="250" selected>250</option>
-            </select>
-          </div>
-          <div class="setting">
-            <label for="battleSpeed">Battle speed</label>
-            <select id="battleSpeed">
-              <option value="slow">Slow</option>
-              <option value="normal" selected>Normal</option>
-              <option value="fast">Fast</option>
-            </select>
-          </div>
-          <div class="setting">
-            <label for="collisionIntensity">Collision intensity</label>
-            <select id="collisionIntensity">
-              <option value="low">Low</option>
-              <option value="normal" selected>Normal</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-        </section>
-
-        <section class="glass panel leaderboard">
-          <h2>Leaderboard</h2>
-          <div id="leaderboardList" class="leaderboard-list"></div>
-        </section>
-      </aside>
-    </main>
+    <div class="flag-grid" id="flagGrid">
+      <!-- Flags will be generated here -->
+    </div>
   </div>
 
   <script src="script.js"></script>
