@@ -19,20 +19,24 @@ let TOTAL_FLAGS = 250;
 let flags = [];
 let activeFlags = [];
 let deadFlags = [];
-let gapAngle = 0;
-let baseGapSize = Math.PI / 4.5; // কাটা জায়গার মাপ
+
+// Ring Arc Angles (কাটা জায়গা, হলুদ রিং ও ঘোরার লজিক)
+let ringAngle = 0; // রিংয়ের ঘূর্ণন এঙ্গেল
+const gapSize = Math.PI / 4.5; // ফাঁকা কাটা অংশের মাপ (~40 degree)
+const yellowSize = Math.PI / 3; // হলুদ রিংয়ের মাপ (~60 degree)
+
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 60; // ১ মিনিট
+let roundDuration = 60; // ১ মিনিটের রাউন্ড
 
-// Audio System
+// Web Audio Unlocking System
 let audioCtx = null;
 let lastSoundTime = 0;
 
-function initAudio() {
+function unlockAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
@@ -45,9 +49,9 @@ function playSound(type) {
   if (!audioCtx) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
   
-  const now = Date.now();
-  if (type === "bounce" && now - lastSoundTime < 30) return;
-  if (type === "bounce") lastSoundTime = now;
+  const nowTime = Date.now();
+  if (type === "bounce" && nowTime - lastSoundTime < 25) return; // ওভারলোড রোধ করতে
+  if (type === "bounce") lastSoundTime = nowTime;
 
   try {
     const osc = audioCtx.createOscillator();
@@ -55,18 +59,18 @@ function playSound(type) {
     
     if (type === "bounce") {
       osc.type = "sine";
-      osc.frequency.setValueAtTime(320, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+      osc.frequency.setValueAtTime(350, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
     } else if (type === "out") {
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(160, audioCtx.currentTime);
       gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
     } else if (type === "win") {
       osc.type = "triangle";
       osc.frequency.setValueAtTime(520, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.4);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.5);
       gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
     }
@@ -82,26 +86,28 @@ function speakWinner(name) {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance("The winner is " + name);
-    utterance.rate = 0.9;
+    utterance.rate = 0.95;
     utterance.pitch = 1.0;
     utterance.lang = "en-US";
     window.speechSynthesis.speak(utterance);
   }
 }
 
+// ২৫০টি দেশের পতাকার লিস্ট
 const countryList = [
   ["IN","India","🇮🇳"], ["US","United States","🇺🇸"], ["GB","United Kingdom","🇬🇧"], 
   ["BD","Bangladesh","🇧🇩"], ["CM","Cameroon","🇨🇲"], ["BF","Burkina Faso","🇧🇫"],
   ["SC","Seychelles","🇸🇨"], ["MW","Malawi","🇲🇼"], ["SZ","Eswatini","🇸🇿"],
   ["BR","Brazil","🇧🇷"], ["AR","Argentina","🇦🇷"], ["FR","France","🇫🇷"],
-  ["DE","Germany","🇩🇪"], ["JP","Japan","🇯🇵"], ["KR","South Korea","🇰🇷"]
+  ["DE","Germany","🇩🇪"], ["JP","Japan","🇯🇵"], ["KR","South Korea","🇰🇷"],
+  ["CA","Canada","🇨🇦"], ["AU","Australia","🇦🇺"], ["IT","Italy","🇮🇹"]
 ];
 while(countryList.length < TOTAL_FLAGS) {
     countryList.push(countryList[Math.floor(Math.random() * countryList.length)]);
 }
 
 function startGame(mode) {
-  initAudio();
+  unlockAudio();
   document.body.classList.add(mode + '-mode');
   els.modeSelector.classList.add("hidden");
   els.app.classList.remove("hidden");
@@ -120,7 +126,7 @@ function resizeCanvas() {
   canvas.height = rect.height;
   arenaX = canvas.width / 2;
   arenaY = canvas.height / 2 - 30;
-  arenaR = Math.min(arenaX, arenaY) - 20; 
+  arenaR = Math.min(arenaX, arenaY) - 25; 
 }
 
 function initGame() {
@@ -136,7 +142,7 @@ function initGame() {
       x: arenaX + (Math.random() - 0.5) * (arenaR * 0.8),
       y: arenaY + (Math.random() - 0.5) * (arenaR * 0.8),
       vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5,
-      r: 10, active: true
+      r: 9, active: true
     };
     flags.push(flagObj);
     
@@ -164,7 +170,9 @@ function eliminate(flag) {
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   deadFlags.push(flag); 
   
-  document.getElementById("grid-flag-" + flag.id).classList.add("eliminated");
+  const gridEl = document.getElementById("grid-flag-" + flag.id);
+  if (gridEl) gridEl.classList.add("eliminated");
+  
   updateUI();
   
   if (activeFlags.length === 1) {
@@ -205,7 +213,7 @@ function updateLeaderboard() {
         <div class="board-row">
             <span class="rank">#${i+1}</span>
             <span>${c[2]} ${c[1]}</span>
-            <span class="win-count">${round} win</span>
+            <span class="win-count">1 win</span>
         </div>
     `).join("");
 }
@@ -222,14 +230,21 @@ function gameLoop() {
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
   
   let timeRatio = elapsed / roundDuration;
-  let currentGapSize = baseGapSize + (timeRatio * (Math.PI * 0.8)); // সময় বাড়ার সাথে কাটা অংশ হালকা বড় হবে
-  let speedMult = 1 + (timeRatio * 1.4); 
+  let speedMult = 1 + (timeRatio * 1.5); 
   
-  // কাটা রিং ও হলুদ টুকরোটির ঘোরার গতি
-  gapAngle = normalizeAngle(gapAngle + 0.022);
+  // রিং ঘূর্ণন গতি (Ring Rotation)
+  ringAngle = normalizeAngle(ringAngle + 0.02);
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
+  // এঙ্গেল হিসাব
+  let gStart = ringAngle;
+  let gEnd = normalizeAngle(ringAngle + gapSize);
+  let yStart = gEnd;
+  let yEnd = normalizeAngle(gEnd + yellowSize);
+  let wStart = yEnd;
+  let wEnd = gStart;
+
   // Active Flags Physics
   for (let f of activeFlags) {
     f.x += f.vx * speedMult;
@@ -241,16 +256,19 @@ function gameLoop() {
     
     if (dist > arenaR - f.r) {
       let fAngle = normalizeAngle(Math.atan2(dy, dx));
-      let gStart = gapAngle;
-      let gEnd = normalizeAngle(gapAngle + currentGapSize);
       
+      // চেক করা হচ্ছে ফ্ল্যাগটি কি ফাঁকা জায়গায় (Gap) আছে?
       let inGap = false;
       if (gStart < gEnd) inGap = (fAngle >= gStart && fAngle <= gEnd);
       else inGap = (fAngle >= gStart || fAngle <= gEnd);
       
       if (inGap) {
-          if (dist > arenaR + 5) { eliminate(f); }
+          // ফাঁকা জায়গা পেলে কোনো বাউন্স হবে না, বাইরে বের হয়ে বাদ হয়ে যাবে
+          if (dist > arenaR + 10) { 
+            eliminate(f); 
+          }
       } else {
+          // ওয়ালে ধাক্কা খেয়ে বাউন্স করবে
           let nx = dx / dist;
           let ny = dy / dist;
           f.x = arenaX + nx * (arenaR - f.r);
@@ -264,53 +282,61 @@ function gameLoop() {
     }
   }
 
-  // Dead Flags Physics (নিচে মাধ্যাকর্ষণে জমা হওয়া)
+  // Dead Flags Physics (নিচে ছিটকে পড়ে জমা হওয়া)
   for (let f of deadFlags) {
-      f.vy += 0.3;
+      f.vy += 0.35; // Gravity
       f.x += f.vx * 0.9;
       f.y += f.vy;
       
       if (f.y >= canvas.height - f.r) {
           f.y = canvas.height - f.r;
-          f.vy *= -0.3;
+          f.vy *= -0.25;
           f.vx *= 0.8;
       }
       if (f.x <= f.r) { f.x = f.r; f.vx *= -0.5; }
       if (f.x >= canvas.width - f.r) { f.x = canvas.width - f.r; f.vx *= -0.5; }
   }
+
+  // --- DRAW RING SECTIONS ---
   
-  // ১. কাটা সাদা রিং আঁকা (Gap অংশটি ফাঁকা থাকবে)
+  // ১. সাদা রিং (White Arc)
   ctx.beginPath();
-  ctx.arc(arenaX, arenaY, arenaR, gapAngle + currentGapSize, gapAngle + Math.PI * 2);
-  ctx.lineWidth = 5;
+  ctx.arc(arenaX, arenaY, arenaR, wStart, wEnd);
+  ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
-  // ২. হলুদ টুকরোটি ঠিক ওই কাটা ফাঁকা জায়গাটিতেই আঁকা ও ঘোড়ানো
+  // ২. হলুদ গ্লোয়িং রিং (Yellow Glowing Arc)
   ctx.beginPath();
-  ctx.arc(arenaX, arenaY, arenaR, gapAngle, gapAngle + currentGapSize);
+  ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
   ctx.strokeStyle = "#ffd23f";
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 15;
   ctx.shadowColor = "#ffd23f";
   ctx.stroke();
-  ctx.shadowBlur = 0; // Reset Shadow
+  ctx.shadowBlur = 0; 
 
-  // Dead Flags Render
-  ctx.font = "18px Arial";
+  // ৩. ফাঁকা কাটা অংশ (GAP): এখানে কিছুই ড্র করা হচ্ছে না! (완전 ফাঁকা)
+
+  // Draw Dead Flags (নিচে জমানো)
+  ctx.font = "16px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.globalAlpha = 0.5;
+  ctx.globalAlpha = 0.55;
   for (let f of deadFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
   ctx.globalAlpha = 1.0;
 
-  // Active Flags Render
-  ctx.font = "24px Arial";
+  // Draw Active Flags (রিংয়ের ভেতর)
+  ctx.font = "22px Arial";
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
   
   requestAnimationFrame(gameLoop);
 }
+
+// স্ক্রিনের যেকোনো জায়গায় টাচ করলে সাউন্ড আনলক হবে
+document.addEventListener("click", unlockAudio);
+document.addEventListener("touchstart", unlockAudio);
