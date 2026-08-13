@@ -23,8 +23,8 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const gapSize = Math.PI / 4.2;    // প্রাকৃতিক সুন্দর গ্যাপ সাইজ
-const yellowSize = Math.PI / 3;   
+const gapSize = Math.PI / 4.5;    // ফিক্সড গ্যাপ (~40 degree)
+const yellowSize = Math.PI / 3;   // হলুদ দরজার মাপ (~60 degree)
 
 const whiteSpeed = 0.018; 
 const yellowSpeed = 0.052; 
@@ -34,7 +34,7 @@ let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 45; // ৪৫ সেকেন্ডের রাউন্ড
+let roundDuration = 45; // ৪৫ সেকেন্ডের নিখুঁত রাউন্ড
 
 // Web Audio System
 let audioCtx = null;
@@ -49,6 +49,7 @@ function unlockAudio() {
   }
 }
 
+// 🎧 ASMR Sound Synthesizer Engine
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -57,55 +58,68 @@ function playSound(type, intensity = 1) {
 
   try {
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 35) return;
+      // ৩০ms এর থ্রটল যাতে ঘনঘন ধাক্কায় কানের অস্বস্তি না হয়
+      if (nowTime - lastSoundTime < 30) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const pitch = 200 + Math.random() * 60 + intensity * 30;
+      // মার্বেল বা কাঁচের বল বাউন্সের মতো সোদিং "Wood/Marble Thock"
+      const basePitch = 230 + Math.random() * 40 + Math.min(intensity, 3) * 15;
       osc.type = "sine";
-      osc.frequency.setValueAtTime(pitch, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(70, audioCtx.currentTime + 0.04);
       
-      const vol = Math.min(0.06, 0.01 + intensity * 0.012);
+      // দ্রুত পিচ ড্রপ দিয়ে "Thock" ফিল তৈরি
+      osc.frequency.setValueAtTime(basePitch, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(55, audioCtx.currentTime + 0.035);
+      
+      // সফট স্মুথ ভলিউম
+      const vol = Math.min(0.07, 0.015 + intensity * 0.008);
       gain.gain.setValueAtTime(vol, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.05);
+      osc.stop(audioCtx.currentTime + 0.045);
 
     } else if (type === "out") {
+      // ASMR Bubble / Water Drop Pop Sound
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.15);
       
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(280 + Math.random() * 40, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(550, audioCtx.currentTime + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(140, audioCtx.currentTime + 0.12);
+      
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.16);
+      osc.stop(audioCtx.currentTime + 0.13);
 
     } else if (type === "win") {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.6);
-      
-      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
-      
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 1.2);
+      // ASMR Calming Ambient Chime (C Major Harmonics - C5, E5, G5, C6)
+      const freqs = [523.25, 659.25, 783.99, 1046.50];
+      freqs.forEach((freq, idx) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.08);
+        
+        gain.gain.setValueAtTime(0.001, audioCtx.currentTime + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.05, audioCtx.currentTime + idx * 0.08 + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + idx * 0.08 + 1.2);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + idx * 0.08);
+        osc.stop(audioCtx.currentTime + idx * 0.08 + 1.25);
+      });
     }
   } catch (e) {}
 }
@@ -114,7 +128,7 @@ function speakWinner(name) {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance("The winner is " + name);
-    utterance.rate = 0.95;
+    utterance.rate = 0.92;
     utterance.pitch = 1.0;
     utterance.lang = "en-US";
     window.speechSynthesis.speak(utterance);
@@ -167,8 +181,8 @@ function initGame() {
     let country = countryList[i];
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
-      x: arenaX + (Math.random() - 0.5) * (arenaR * 0.7),
-      y: arenaY + (Math.random() - 0.5) * (arenaR * 0.7),
+      x: arenaX + (Math.random() - 0.5) * (arenaR * 0.8),
+      y: arenaY + (Math.random() - 0.5) * (arenaR * 0.8),
       vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
       r: 9, active: true
     };
@@ -209,11 +223,8 @@ function eliminate(flag) {
   
   updateUI();
   
-  // প্রাকৃতিকভাবে ১টি ফ্ল্যাগ বাকি থাকলে বিজয়ী ঘোষণা
   if (activeFlags.length === 1) {
       declareWinner(activeFlags[0]);
-  } else if (activeFlags.length === 0 && deadFlags.length > 0) {
-      declareWinner(deadFlags[deadFlags.length-1]); 
   }
 }
 
@@ -284,11 +295,13 @@ function gameLoop() {
   let secs = Math.floor(timeLeft % 60);
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
+
+  let progress = Math.min(1, elapsed / roundDuration);
   
-  let timeRatio = Math.min(1, elapsed / roundDuration);
+  let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.75))));
+  let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
   
-  // সময় বাড়ার সাথে সাথে প্রাকৃতিক আউটওয়ার্ড ফোর্স
-  let speedMult = 1.3 + Math.pow(timeRatio, 2) * 3.5; 
+  let speedMult = (1.2 + progress * 2.2) * pressureMult; 
   
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
   yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
@@ -307,10 +320,10 @@ function gameLoop() {
     let dy = f.y - arenaY;
     let dist = Math.hypot(dx, dy) || 1;
     
-    // প্রাকৃতিকভাবে ফ্ল্যাগগুলোকে রিংয়ের দেয়ালের দিকে পুশ করা (যাতে কেউ কেন্দ্রে দাঁড়িয়ে না থাকে)
-    let pushForce = 0.12 + timeRatio * 0.25;
-    f.vx += (dx / dist) * pushForce;
-    f.vy += (dy / dist) * pushForce;
+    if (dist < arenaR * 0.6) {
+        f.vx += (dx / dist) * 0.2 * pressureMult;
+        f.vy += (dy / dist) * 0.2 * pressureMult;
+    }
 
     f.x += f.vx * (speedMult * 0.35);
     f.y += f.vy * (speedMult * 0.35);
@@ -326,7 +339,7 @@ function gameLoop() {
           if (inYellow) {
               bounceFlag(f, dx, dy, dist); 
           } else {
-              if (dist > arenaR + 5) { eliminate(f); } // ফাঁকা দিয়ে প্রাকৃতিকভাবে বাইরে বেরিয়ে যাবে
+              if (dist > arenaR + 6) { eliminate(f); }
           }
       } else {
           bounceFlag(f, dx, dy, dist);
