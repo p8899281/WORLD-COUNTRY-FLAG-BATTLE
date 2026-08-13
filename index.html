@@ -19,23 +19,21 @@
     </div>
   </div>
 
-  <!-- Main Game UI (Hidden initially) -->
+  <!-- Main Game UI -->
   <div id="app" class="hidden">
     <header class="top-header">
       <div class="title">250-EXTENDED FLAGS BATTLE</div>
-      <div class="subtitle">ROUND <span id="roundText">1</span> ⏱ <span id="timerText">00:00</span> · QUALIFYING</div>
+      <div class="subtitle">ROUND <span id="roundText">1</span> ⏱ <span id="timerText">01:00</span> · QUALIFYING</div>
     </header>
 
     <div class="qualified-board">
       <div class="board-title">QUALIFIED FOR FINAL</div>
-      <div class="board-list" id="qualifiedList">
-        <!-- Ranks will appear here -->
-      </div>
+      <div class="board-list" id="qualifiedList"></div>
     </div>
 
     <div class="arena-info">
-      <span class="mod-text">[ NEW MOD ]</span>
-      <span class="qualifying-text">QUALIFYING · <span id="timeText2">00:00</span></span>
+      <span class="mod-text">[ SOUND & VOICE ENABLED ]</span>
+      <span class="qualifying-text">TIME LEFT: <span id="timeText2">60s</span></span>
     </div>
 
     <div class="arena-container">
@@ -54,9 +52,7 @@
       <div class="progress-text"><span id="activeCount">250</span> / 250 FLAGS</div>
     </div>
 
-    <div class="flag-grid" id="flagGrid">
-      <!-- Flags will be generated here -->
-    </div>
+    <div class="flag-grid" id="flagGrid"></div>
   </div>
 
   <script src="script.js"></script>
