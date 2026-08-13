@@ -4,8 +4,6 @@ const ctx = canvas.getContext("2d");
 const els = {
   app: document.getElementById("app"),
   modeSelector: document.getElementById("mode-selector"),
-  activeCount: document.getElementById("activeCount"),
-  progressBar: document.getElementById("progressBar"),
   winnerOverlay: document.getElementById("winnerOverlay"),
   winnerName: document.getElementById("winnerName"),
   winnerFlagBox: document.getElementById("winnerFlagBox"),
@@ -14,7 +12,7 @@ const els = {
   timeText2: document.getElementById("timeText2")
 };
 
-let TOTAL_FLAGS = 193; // 🚩 ১৯৩টি ফ্ল্যাগ
+let TOTAL_FLAGS = 193; 
 let flags = [];
 let activeFlags = [];
 let deadFlags = [];
@@ -33,7 +31,7 @@ let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 45; // ⏱️ ৪৫ সেকেন্ডের রাউন্ড
+let roundDuration = 45; 
 
 // Web Audio System
 let audioCtx = null;
@@ -52,7 +50,6 @@ function unlockAudio() {
   }
 }
 
-// 🎶 Background Music Loop
 function startBGM() {
   stopBGM();
   bgmStep = 0;
@@ -87,7 +84,6 @@ function stopBGM() {
   }
 }
 
-// 🎧 ASMR Sound Engine
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -168,7 +164,6 @@ function speakWinner(name) {
   }
 }
 
-// ১৯৩টি দেশের পতাকার ডাটা
 const countryList = [
   ["IN","India","🇮🇳"], ["US","United States","🇺🇸"], ["GB","United Kingdom","🇬🇧"], 
   ["BD","Bangladesh","🇧🇩"], ["CM","Cameroon","🇨🇲"], ["BF","Burkina Faso","🇧🇫"],
@@ -204,7 +199,7 @@ function resizeCanvas() {
   canvas.width = rect.width;
   canvas.height = rect.height;
   arenaX = canvas.width / 2;
-  arenaY = canvas.height / 2 - 50; // রিং একটু ওপরে রাখা হলো যাতে নিচে ফ্ল্যাগ জমার অনেক জায়গা থাকে
+  arenaY = canvas.height / 2 - 40;
   arenaR = Math.min(arenaX, arenaY) - 25; 
 }
 
@@ -225,7 +220,6 @@ function initGame() {
     flags.push(flagObj);
   }
   activeFlags = [...flags];
-  updateUI();
   updateLeaderboard();
 }
 
@@ -247,7 +241,6 @@ function eliminate(flag) {
   
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   
-  // 🧱 নিচে স্লটভিত্তিক পরপর সাজানোর পজিশন গণনা
   const slotIndex = deadFlags.length;
   const itemWidth = 22;
   const itemsPerRow = Math.max(10, Math.floor((canvas.width - 20) / itemWidth));
@@ -260,7 +253,6 @@ function eliminate(flag) {
   flag.settled = false;
 
   deadFlags.push(flag); 
-  updateUI();
   
   if (activeFlags.length === 1) {
       declareWinner(activeFlags[0]);
@@ -286,12 +278,6 @@ function declareWinner(flag) {
         startBGM(); 
         requestAnimationFrame(gameLoop);
     }, 5000);
-}
-
-function updateUI() {
-  els.activeCount.innerText = activeFlags.length;
-  let percent = (activeFlags.length / TOTAL_FLAGS) * 100;
-  els.progressBar.style.width = percent + "%";
 }
 
 function updateLeaderboard() {
@@ -354,7 +340,6 @@ function gameLoop() {
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-  // Active Flags Physics
   for (let f of [...activeFlags]) {
     let dx = f.x - arenaX;
     let dy = f.y - arenaY;
@@ -387,10 +372,9 @@ function gameLoop() {
     }
   }
 
-  // 🧱 Dead Flags Physics (পরপর বাক্সের মতো সুন্দর জমা হওয়া)
   for (let f of deadFlags) {
       if (!f.settled) {
-          f.vy += 0.4; // Gravity
+          f.vy += 0.4;
           f.x += (f.targetX - f.x) * 0.12;
           f.y += f.vy;
           
@@ -404,7 +388,6 @@ function gameLoop() {
       }
   }
 
-  // RENDER RINGS
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
@@ -420,7 +403,6 @@ function gameLoop() {
   ctx.stroke();
   ctx.shadowBlur = 0; 
 
-  // 🎨 Dead Flags Render (নিচে সারিবদ্ধভাবে উজ্জ্বল রঙে জমা হবে)
   ctx.font = "16px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -429,7 +411,6 @@ function gameLoop() {
       ctx.fillText(f.emoji, f.x, f.y);
   }
 
-  // Active Flags Render
   ctx.font = "22px Arial";
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
