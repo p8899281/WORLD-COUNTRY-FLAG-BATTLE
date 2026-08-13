@@ -20,15 +20,15 @@ let flags = [];
 let activeFlags = [];
 let deadFlags = [];
 let gapAngle = 0;
-let baseGapSize = Math.PI / 5;
+let baseGapSize = Math.PI / 4.5; // কাটা জায়গার মাপ
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 60; // 1 min
+let roundDuration = 60; // ১ মিনিট
 
-// Audio Context Setup
+// Audio System
 let audioCtx = null;
 let lastSoundTime = 0;
 
@@ -43,12 +43,9 @@ function initAudio() {
 
 function playSound(type) {
   if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   
   const now = Date.now();
-  // Throttle bounce sounds (৩০ মিলিফেকেন্ডের ব্যবধান না থাকলে সাউন্ড ওভারলোড হবে না)
   if (type === "bounce" && now - lastSoundTime < 30) return;
   if (type === "bounce") lastSoundTime = now;
 
@@ -58,7 +55,7 @@ function playSound(type) {
     
     if (type === "bounce") {
       osc.type = "sine";
-      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(320, audioCtx.currentTime);
       gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
     } else if (type === "out") {
@@ -78,14 +75,12 @@ function playSound(type) {
     gain.connect(audioCtx.destination);
     osc.start();
     osc.stop(audioCtx.currentTime + 1.2);
-  } catch (e) {
-    console.log("Audio Error:", e);
-  }
+  } catch (e) {}
 }
 
 function speakWinner(name) {
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel(); // আগের কোনো কথা আটকে থাকলে তা ক্লিয়ার করবে
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance("The winner is " + name);
     utterance.rate = 0.9;
     utterance.pitch = 1.0;
@@ -227,10 +222,11 @@ function gameLoop() {
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
   
   let timeRatio = elapsed / roundDuration;
-  let currentGapSize = baseGapSize + (timeRatio * Math.PI); 
-  let speedMult = 1 + (timeRatio * 1.5); 
+  let currentGapSize = baseGapSize + (timeRatio * (Math.PI * 0.8)); // সময় বাড়ার সাথে কাটা অংশ হালকা বড় হবে
+  let speedMult = 1 + (timeRatio * 1.4); 
   
-  gapAngle = normalizeAngle(gapAngle + 0.025);
+  // কাটা রিং ও হলুদ টুকরোটির ঘোরার গতি
+  gapAngle = normalizeAngle(gapAngle + 0.022);
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
@@ -268,7 +264,7 @@ function gameLoop() {
     }
   }
 
-  // Dead Flags Physics
+  // Dead Flags Physics (নিচে মাধ্যাকর্ষণে জমা হওয়া)
   for (let f of deadFlags) {
       f.vy += 0.3;
       f.x += f.vx * 0.9;
@@ -283,24 +279,24 @@ function gameLoop() {
       if (f.x >= canvas.width - f.r) { f.x = canvas.width - f.r; f.vx *= -0.5; }
   }
   
-  // Draw Arena Arc (White)
+  // ১. কাটা সাদা রিং আঁকা (Gap অংশটি ফাঁকা থাকবে)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gapAngle + currentGapSize, gapAngle + Math.PI * 2);
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 5;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
-  // Draw Yellow Exit Ring
+  // ২. হলুদ টুকরোটি ঠিক ওই কাটা ফাঁকা জায়গাটিতেই আঁকা ও ঘোড়ানো
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gapAngle, gapAngle + currentGapSize);
   ctx.lineWidth = 6;
   ctx.strokeStyle = "#ffd23f";
-  ctx.shadowBlur = 15;
+  ctx.shadowBlur = 12;
   ctx.shadowColor = "#ffd23f";
   ctx.stroke();
-  ctx.shadowBlur = 0; 
+  ctx.shadowBlur = 0; // Reset Shadow
 
-  // Draw Dead Flags
+  // Dead Flags Render
   ctx.font = "18px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -310,7 +306,7 @@ function gameLoop() {
   }
   ctx.globalAlpha = 1.0;
 
-  // Draw Active Flags
+  // Active Flags Render
   ctx.font = "24px Arial";
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
