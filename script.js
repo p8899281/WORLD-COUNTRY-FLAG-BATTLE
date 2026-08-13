@@ -284,13 +284,12 @@ function declareWinner(flag) {
     }, 5000);
 }
 
-// 🟡 স্লাইডার পজিশন ও কাউন্ট আপডেট
+// 🟡 প্রোগ্রেস বারের চওড়া (Width) এবং সক্রিয় ফ্ল্যাগের সংখ্যা আপডেট
 function updateUI() {
   if (els.activeCount && els.progressBar) {
     els.activeCount.innerText = activeFlags.length;
-    let ratio = activeFlags.length / TOTAL_FLAGS;
-    let leftPos = (1 - ratio) * 85; // % position left to right
-    els.progressBar.style.left = leftPos + "%";
+    let percentage = (activeFlags.length / TOTAL_FLAGS) * 100;
+    els.progressBar.style.width = percentage + "%";
   }
 }
 
