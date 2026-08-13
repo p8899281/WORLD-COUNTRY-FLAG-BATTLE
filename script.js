@@ -34,9 +34,9 @@ let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 45; // ৪৫ সেকেন্ডের রাউন্ড
+let roundDuration = 45; // ৪৫ সেকেন্ডের নিখুঁত রাউন্ড
 
-// Web Audio Unlocking System
+// Web Audio System
 let audioCtx = null;
 let lastSoundTime = 0;
 
@@ -49,7 +49,6 @@ function unlockAudio() {
   }
 }
 
-// 🔊 রিয়েলিস্টিক সাউন্ড ইঞ্জিন
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -58,14 +57,12 @@ function playSound(type, intensity = 1) {
 
   try {
     if (type === "bounce") {
-      // প্রতি ৩৫ms এর মধ্যে বারবার সাউন্ড ট্রিগার রোধ করা
       if (nowTime - lastSoundTime < 35) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      // মার্বেল বা বলের মতো বাস্তবমুখী সফট পপ সাউন্ড
       const pitch = 200 + Math.random() * 60 + intensity * 30;
       osc.type = "sine";
       osc.frequency.setValueAtTime(pitch, audioCtx.currentTime);
@@ -200,6 +197,7 @@ function isAngleBetween(target, start, end) {
 }
 
 function eliminate(flag) {
+  if (!flag.active) return;
   flag.active = false;
   playSound("out");
   
@@ -219,6 +217,7 @@ function eliminate(flag) {
 }
 
 function declareWinner(flag) {
+    if (!isPlaying && els.winnerOverlay.classList.contains("hidden") === false) return;
     isPlaying = false;
     playSound("win");
     speakWinner(flag.name);
@@ -254,14 +253,12 @@ function updateLeaderboard() {
     `).join("");
 }
 
-// 🎯 নির্ভুল বাউন্স ও সাউন্ড ট্র্যাকিং
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
   let dot = (f.vx * nx) + (f.vy * ny);
   
-  // কেবল যখন ফ্ল্যাগটি বাইরের দিকে যাচ্ছিল, তখনই ধাক্কা ও সাউন্ড হবে
   if (dot > 0) {
     f.x = arenaX + nx * (arenaR - f.r);
     f.y = arenaY + ny * (arenaR - f.r);
@@ -287,8 +284,28 @@ function gameLoop() {
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
   
+  // ⏱️ টাইমার শেষ (45s) কিন্তু একাধিক পতাকা থাকলে ১ জনকে বিজয়ী করার ফিক্স
+  if (timeLeft <= 0 && activeFlags.length > 1) {
+      let winnerIndex = Math.floor(Math.random() * activeFlags.length);
+      let winner = activeFlags[winnerIndex];
+      
+      // বাকিদের আউট করে দেওয়া
+      for (let f of activeFlags) {
+          if (f.id !== winner.id) {
+              f.active = false;
+              deadFlags.push(f);
+              const gridEl = document.getElementById("grid-flag-" + f.id);
+              if (gridEl) gridEl.classList.add("eliminated");
+          }
+      }
+      activeFlags = [winner];
+      updateUI();
+      declareWinner(winner);
+      return;
+  }
+  
   let timeRatio = Math.min(1, elapsed / roundDuration);
-  let speedMult = 1.2 + (timeRatio * 2.8); 
+  let speedMult = 1.2 + (timeRatio * 3.2); // সময় পার হওয়ার সাথে সাথে স্পিড বাড়বে
   
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
   yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
@@ -302,14 +319,14 @@ function gameLoop() {
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
   // Active Flags Physics
-  for (let f of activeFlags) {
+  for (let f of [...activeFlags]) {
     let dx = f.x - arenaX;
     let dy = f.y - arenaY;
     let dist = Math.hypot(dx, dy) || 1;
     
     if (dist < arenaR * 0.5) {
-        f.vx += (dx / dist) * 0.15 * speedMult;
-        f.vy += (dy / dist) * 0.15 * speedMult;
+        f.vx += (dx / dist) * 0.18 * speedMult;
+        f.vy += (dy / dist) * 0.18 * speedMult;
     }
 
     f.x += f.vx * (speedMult * 0.4);
@@ -349,7 +366,7 @@ function gameLoop() {
       if (f.x >= canvas.width - f.r) { f.x = canvas.width - f.r; f.vx *= -0.5; }
   }
 
-  // --- RENDER RINGS ---
+  // RENDER RINGS
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
