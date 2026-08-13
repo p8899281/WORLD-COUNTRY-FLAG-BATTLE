@@ -20,23 +20,21 @@ let flags = [];
 let activeFlags = [];
 let deadFlags = [];
 
-// রিং ঘূর্ণন ও ফিক্সড মাপ
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-// 🔒 ফাঁকা জায়গাটি এখন সবসময় ফিক্সড (কখনোই বড় হবে না)
-const gapSize = Math.PI / 4.5;    // সুন্দর প্রাকৃতিক ফাঁকা সাইজ (~40 degree)
-const yellowSize = Math.PI / 3;   // হলুদ দরজার মাপ (~60 degree)
+const gapSize = Math.PI / 4.5;    
+const yellowSize = Math.PI / 3;   
 
 const whiteSpeed = 0.018; 
-const yellowSpeed = 0.052; // হলুদ গেট খুব ফাস্ট ঘুরবে
+const yellowSpeed = 0.052; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let isPlaying = false;
 let round = 1;
 
 let startTime = 0;
-let roundDuration = 45; // ⏱️ ঠিক ৪৫ সেকেন্ডের খেলা
+let roundDuration = 45; // ৪৫ সেকেন্ডের রাউন্ড
 
 // Web Audio Unlocking System
 let audioCtx = null;
@@ -51,40 +49,67 @@ function unlockAudio() {
   }
 }
 
-function playSound(type) {
-  if (!audioCtx) return;
+// 🔊 রিয়েলিস্টিক সাউন্ড ইঞ্জিন
+function playSound(type, intensity = 1) {
+  if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
   
   const nowTime = Date.now();
-  if (type === "bounce" && nowTime - lastSoundTime < 25) return;
-  if (type === "bounce") lastSoundTime = nowTime;
 
   try {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    
     if (type === "bounce") {
+      // প্রতি ৩৫ms এর মধ্যে বারবার সাউন্ড ট্রিগার রোধ করা
+      if (nowTime - lastSoundTime < 35) return;
+      lastSoundTime = nowTime;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      // মার্বেল বা বলের মতো বাস্তবমুখী সফট পপ সাউন্ড
+      const pitch = 200 + Math.random() * 60 + intensity * 30;
       osc.type = "sine";
-      osc.frequency.setValueAtTime(340, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+      osc.frequency.setValueAtTime(pitch, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(70, audioCtx.currentTime + 0.04);
+      
+      const vol = Math.min(0.06, 0.01 + intensity * 0.012);
+      gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.05);
+
     } else if (type === "out") {
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(160, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
-    } else if (type === "win") {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
       osc.type = "triangle";
-      osc.frequency.setValueAtTime(520, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.5);
-      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(60, audioCtx.currentTime + 0.15);
+      
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.16);
+
+    } else if (type === "win") {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.6);
+      
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1.2);
     }
-    
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 1.2);
   } catch (e) {}
 }
 
@@ -229,16 +254,26 @@ function updateLeaderboard() {
     `).join("");
 }
 
+// 🎯 নির্ভুল বাউন্স ও সাউন্ড ট্র্যাকিং
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
-  f.x = arenaX + nx * (arenaR - f.r);
-  f.y = arenaY + ny * (arenaR - f.r);
   
   let dot = (f.vx * nx) + (f.vy * ny);
-  f.vx -= 2 * dot * nx;
-  f.vy -= 2 * dot * ny;
-  playSound("bounce");
+  
+  // কেবল যখন ফ্ল্যাগটি বাইরের দিকে যাচ্ছিল, তখনই ধাক্কা ও সাউন্ড হবে
+  if (dot > 0) {
+    f.x = arenaX + nx * (arenaR - f.r);
+    f.y = arenaY + ny * (arenaR - f.r);
+    
+    f.vx -= 2 * dot * nx;
+    f.vy -= 2 * dot * ny;
+    
+    const speed = Math.abs(dot);
+    if (speed > 0.8) {
+      playSound("bounce", speed);
+    }
+  }
 }
 
 function gameLoop() {
@@ -252,9 +287,8 @@ function gameLoop() {
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
   
-  // ৪৫ সেকেন্ডে গেম শেষ করার জন্য গতি এবং ধাক্কার ফিজিক্স অ্যাডজাস্টমেন্ট
   let timeRatio = Math.min(1, elapsed / roundDuration);
-  let speedMult = 1.2 + (timeRatio * 2.8); // গতি ধীরে ধীরে বাড়বে
+  let speedMult = 1.2 + (timeRatio * 2.8); 
   
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
   yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
@@ -262,14 +296,13 @@ function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   let gStart = whiteAngle;
-  let gEnd = normalizeAngle(whiteAngle + gapSize); // ফিক্সড গ্যাপ
+  let gEnd = normalizeAngle(whiteAngle + gapSize);
   
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
   // Active Flags Physics
   for (let f of activeFlags) {
-    // কেন্দ্র থেকে বাইরের দিকে নিয়ে যাওয়ার ফোর্স (যাতে ৪-৫ জন পতাকা আটকে না থাকে)
     let dx = f.x - arenaX;
     let dy = f.y - arenaY;
     let dist = Math.hypot(dx, dy) || 1;
@@ -293,7 +326,7 @@ function gameLoop() {
           if (inYellow) {
               bounceFlag(f, dx, dy, dist); 
           } else {
-              if (dist > arenaR + 6) { eliminate(f); } // ফাঁকা জায়গা পেলে অনায়াসে বের হয়ে যাবে
+              if (dist > arenaR + 6) { eliminate(f); }
           }
       } else {
           bounceFlag(f, dx, dy, dist);
@@ -317,15 +350,12 @@ function gameLoop() {
   }
 
   // --- RENDER RINGS ---
-  
-  // ১. কাটা সাদা রিং (সবসময় সুন্দর স্থির ফাঁকা সাইজ থাকবে)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
-  // ২. হলুদ আর্চ (গেট)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
