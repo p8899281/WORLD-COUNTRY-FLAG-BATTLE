@@ -7,10 +7,8 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-
 body { background-color: #000; color: var(--text-main); display: flex; justify-content: center; height: 100vh; overflow: hidden; }
 
-/* Mode Selector */
 .overlay-screen { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
 .mode-box { background: var(--board-bg); border: 2px solid var(--theme-green); padding: 30px; border-radius: 12px; text-align: center; }
 .mode-box h2 { margin-bottom: 20px; color: var(--theme-green); }
@@ -19,20 +17,14 @@ body { background-color: #000; color: var(--text-main); display: flex; justify-c
 .mode-btns button:hover { background: var(--theme-green); color: black; }
 .hidden { display: none !important; }
 
-/* Main App Layout */
-#app { background-color: var(--bg-color); width: 100%; display: flex; flex-direction: column; padding: 10px; transition: all 0.3s; }
-
-/* Mobile Mode Constraints */
+#app { background-color: var(--bg-color); width: 100%; display: flex; flex-direction: column; padding: 10px; transition: all 0.3s; position: relative; }
 body.mobile-mode #app { max-width: 480px; border-left: 2px solid #111; border-right: 2px solid #111; }
-/* PC Mode Constraints */
 body.pc-mode #app { max-width: 900px; padding: 20px; border-radius: 12px; border: 1px solid var(--theme-green); margin: auto; height: 95vh; }
 
-/* Header */
 .top-header { text-align: center; margin-bottom: 10px; }
-.title { font-size: 22px; font-weight: 900; letter-spacing: 1px; }
-.subtitle { font-size: 12px; color: var(--theme-yellow); font-weight: bold; margin-top: 5px; }
+.title { font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #fff;}
+.subtitle { font-size: 14px; color: var(--theme-yellow); font-weight: bold; margin-top: 5px; }
 
-/* Qualified Board */
 .qualified-board { background: var(--board-bg); border: 2px solid #005a30; border-radius: 12px; padding: 10px; margin-bottom: 15px; }
 .board-title { text-align: center; font-weight: bold; margin-bottom: 8px; letter-spacing: 1px; }
 .board-list { display: flex; flex-direction: column; gap: 4px; }
@@ -40,26 +32,22 @@ body.pc-mode #app { max-width: 900px; padding: 20px; border-radius: 12px; border
 .rank { color: var(--theme-green); width: 30px; }
 .win-count { color: var(--theme-yellow); }
 
-/* Arena Info */
-.arena-info { display: flex; justify-content: space-between; font-size: 11px; color: #888; font-weight: bold; padding: 0 10px; margin-bottom: 5px; }
+.arena-info { display: flex; justify-content: space-between; font-size: 12px; color: #888; font-weight: bold; padding: 0 10px; margin-bottom: 5px; }
+.qualifying-text { color: #ff5555; }
 
-/* Arena Canvas */
-.arena-container { position: relative; flex: 1; display: flex; justify-content: center; align-items: center; min-height: 350px; }
-canvas { width: 100%; height: 100%; max-height: 500px; object-fit: contain; }
+.arena-container { position: relative; flex: 1; display: flex; justify-content: center; align-items: center; min-height: 380px; }
+canvas { width: 100%; height: 100%; max-height: 550px; object-fit: contain; }
 
-/* Winner Overlay */
-.winner-overlay { position: absolute; text-align: center; background: rgba(0,0,0,0.7); inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 50%; z-index: 10; }
+.winner-overlay { position: absolute; text-align: center; background: rgba(0,0,0,0.85); inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 15px; z-index: 10; }
 .round-winner-text { color: var(--theme-yellow); font-size: 24px; font-weight: 900; margin-bottom: 10px; text-shadow: 0 0 10px rgba(255,210,63,0.8); }
 .winner-flag-box { font-size: 80px; box-shadow: 0 0 30px rgba(255,255,255,0.3); background: #000; padding: 10px; margin: 10px 0; border-radius: 10px; }
 .winner-name { font-size: 28px; font-weight: bold; margin-top: 15px; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
 
-/* Progress Bar */
 .progress-section { margin-top: 10px; text-align: center; }
 .progress-bar-bg { background: #222; height: 6px; border-radius: 3px; width: 80%; margin: 0 auto 8px; overflow: hidden; }
 .progress-bar-fill { background: var(--theme-yellow); height: 100%; width: 100%; transition: 0.3s; }
 .progress-text { font-size: 12px; font-weight: bold; color: #ccc; }
 
-/* Flag Grid */
-.flag-grid { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 10px; max-height: 120px; overflow-y: auto; }
-.flag-icon { width: 18px; height: 14px; font-size: 12px; display: flex; justify-content: center; align-items: center; background: #222; opacity: 1; transition: 0.2s; }
+.flag-grid { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 10px; max-height: 120px; overflow-y: auto; padding-bottom: 10px; }
+.flag-icon { width: 18px; height: 14px; font-size: 12px; display: flex; justify-content: center; align-items: center; background: #222; opacity: 1; transition: 0.2s; border-radius:2px;}
 .flag-icon.eliminated { opacity: 0.2; filter: grayscale(100%); }
