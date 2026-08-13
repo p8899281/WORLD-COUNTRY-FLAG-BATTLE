@@ -284,14 +284,12 @@ function declareWinner(flag) {
     }, 5000);
 }
 
-// 🟡 এই ফাংশনটি তোমার হলুদ বারটি ঠিক কতটুকু চওড়া থাকবে তা নিয়ন্ত্রণ করবে
 function updateUI() {
   if (els.activeCount && els.progressBar) {
     els.activeCount.innerText = activeFlags.length;
-    
-    // ফ্ল্যাগের শতকরা পরিমাণ বের করে লাইনের Width সেট করা
     let percentage = (activeFlags.length / TOTAL_FLAGS) * 100;
     els.progressBar.style.width = percentage + "%";
+    els.progressBar.style.left = "0px"; 
   }
 }
 
@@ -403,12 +401,14 @@ function gameLoop() {
       }
   }
 
+  // 1. সাদা রিং
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
+  // 2. 🔵 ছোট নীল নিয়ন আর্চ (Neon Blue Gate)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
