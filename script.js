@@ -18,56 +18,80 @@ const els = {
 let TOTAL_FLAGS = 250;
 let flags = [];
 let activeFlags = [];
-let deadFlags = []; // যে ফ্ল্যাগগুলো নিচে জমা হবে
+let deadFlags = [];
 let gapAngle = 0;
-let baseGapSize = Math.PI / 5; // শুরুর ফাঁকা জায়গা
+let baseGapSize = Math.PI / 5;
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let isPlaying = false;
 let round = 1;
 
-// Timer Logic
 let startTime = 0;
-let roundDuration = 60; // 60 seconds (1 minute)
+let roundDuration = 60; // 1 min
 
-// Audio Context
-let audioCtx;
+// Audio Context Setup
+let audioCtx = null;
+let lastSoundTime = 0;
+
 function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // ভয়েস ইঞ্জিন চালু করা
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-    }
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
   }
 }
 
 function playSound(type) {
   if (!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  
-  if (type === "bounce") {
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-  } else if (type === "out") {
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-  } else if (type === "win") {
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.5);
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
   }
   
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + 1.5);
+  const now = Date.now();
+  // Throttle bounce sounds (৩০ মিলিফেকেন্ডের ব্যবধান না থাকলে সাউন্ড ওভারলোড হবে না)
+  if (type === "bounce" && now - lastSoundTime < 30) return;
+  if (type === "bounce") lastSoundTime = now;
+
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    if (type === "bounce") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    } else if (type === "out") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+    } else if (type === "win") {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+    }
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 1.2);
+  } catch (e) {
+    console.log("Audio Error:", e);
+  }
+}
+
+function speakWinner(name) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); // আগের কোনো কথা আটকে থাকলে তা ক্লিয়ার করবে
+    const utterance = new SpeechSynthesisUtterance("The winner is " + name);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.lang = "en-US";
+    window.speechSynthesis.speak(utterance);
+  }
 }
 
 const countryList = [
@@ -100,7 +124,7 @@ function resizeCanvas() {
   canvas.width = rect.width;
   canvas.height = rect.height;
   arenaX = canvas.width / 2;
-  arenaY = canvas.height / 2 - 30; // রিং একটু ওপরে রাখা হলো যাতে নিচে ফ্ল্যাগ জমার জায়গা থাকে
+  arenaY = canvas.height / 2 - 30;
   arenaR = Math.min(arenaX, arenaY) - 20; 
 }
 
@@ -142,7 +166,6 @@ function eliminate(flag) {
   flag.active = false;
   playSound("out");
   
-  // ফ্ল্যাগটি রিংয়ের বাইরে গেলে নিচে জমা হওয়ার জন্য deadFlags-এ পাঠানো হলো
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   deadFlags.push(flag); 
   
@@ -151,8 +174,7 @@ function eliminate(flag) {
   
   if (activeFlags.length === 1) {
       declareWinner(activeFlags[0]);
-  } else if (activeFlags.length === 0) {
-      // যদি ২ জন একসাথে বেরিয়ে যায়
+  } else if (activeFlags.length === 0 && deadFlags.length > 0) {
       declareWinner(deadFlags[deadFlags.length-1]); 
   }
 }
@@ -160,17 +182,11 @@ function eliminate(flag) {
 function declareWinner(flag) {
     isPlaying = false;
     playSound("win");
+    speakWinner(flag.name);
     
     els.winnerOverlay.classList.remove("hidden");
     els.winnerFlagBox.innerText = flag.emoji;
     els.winnerName.innerText = flag.name;
-    
-    // Voice Announcement
-    if ('speechSynthesis' in window) {
-        let speech = new SpeechSynthesisUtterance("The winner is " + flag.name);
-        speech.rate = 1.0;
-        window.speechSynthesis.speak(speech);
-    }
     
     setTimeout(() => {
         els.winnerOverlay.classList.add("hidden");
@@ -202,7 +218,6 @@ function updateLeaderboard() {
 function gameLoop() {
   if (!isPlaying) return;
   
-  // 1 Minute Timer Logic
   let elapsed = (Date.now() - startTime) / 1000;
   let timeLeft = Math.max(0, roundDuration - elapsed);
   
@@ -211,9 +226,8 @@ function gameLoop() {
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
   
-  // সময়ের সাথে সাথে গেম ফাস্ট হবে এবং কাটা জায়গাটি বড় হবে (যাতে ৬০ সেকেন্ডে গেম শেষ হয়)
   let timeRatio = elapsed / roundDuration;
-  let currentGapSize = baseGapSize + (timeRatio * Math.PI); // ফাঁকা জায়গা ধীরে ধীরে বড় হবে
+  let currentGapSize = baseGapSize + (timeRatio * Math.PI); 
   let speedMult = 1 + (timeRatio * 1.5); 
   
   gapAngle = normalizeAngle(gapAngle + 0.025);
@@ -239,9 +253,8 @@ function gameLoop() {
       else inGap = (fAngle >= gStart || fAngle <= gEnd);
       
       if (inGap) {
-          if (dist > arenaR + 5) { eliminate(f); } // ফাঁকা দিয়ে বের হয়ে গেল
+          if (dist > arenaR + 5) { eliminate(f); }
       } else {
-          // সাদা দাগে ধাক্কা খেয়ে ফিরে আসা
           let nx = dx / dist;
           let ny = dy / dist;
           f.x = arenaX + nx * (arenaR - f.r);
@@ -255,31 +268,29 @@ function gameLoop() {
     }
   }
 
-  // Dead Flags Physics (নিচে মাধ্যাকর্ষণের ফলে জমা হওয়া)
+  // Dead Flags Physics
   for (let f of deadFlags) {
-      f.vy += 0.3; // Gravity (নিচের দিকে টানবে)
+      f.vy += 0.3;
       f.x += f.vx * 0.9;
       f.y += f.vy;
       
-      // স্ক্রিনের একদম নিচে আটকে যাওয়া
       if (f.y >= canvas.height - f.r) {
           f.y = canvas.height - f.r;
-          f.vy *= -0.3; // হালকা বাউন্স করে থেমে যাবে
+          f.vy *= -0.3;
           f.vx *= 0.8;
       }
-      // স্ক্রিনের বাইরে যেন না যায়
       if (f.x <= f.r) { f.x = f.r; f.vx *= -0.5; }
       if (f.x >= canvas.width - f.r) { f.x = canvas.width - f.r; f.vx *= -0.5; }
   }
   
-  // Draw Arena (কাটা সাদা রিং)
+  // Draw Arena Arc (White)
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gapAngle + currentGapSize, gapAngle + Math.PI * 2);
   ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
-  // Draw Yellow Exit Ring (হলুদ কাটা অংশ)
+  // Draw Yellow Exit Ring
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gapAngle, gapAngle + currentGapSize);
   ctx.lineWidth = 6;
@@ -289,11 +300,11 @@ function gameLoop() {
   ctx.stroke();
   ctx.shadowBlur = 0; 
 
-  // Draw Dead Flags (নিচে পড়ে থাকা ফ্ল্যাগগুলো)
+  // Draw Dead Flags
   ctx.font = "18px Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.globalAlpha = 0.5; // একটু আবছা দেখাবে
+  ctx.globalAlpha = 0.5;
   for (let f of deadFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
