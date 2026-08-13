@@ -284,10 +284,13 @@ function declareWinner(flag) {
     }, 5000);
 }
 
-// 🟡 প্রোগ্রেস বারের চওড়া (Width) এবং সক্রিয় ফ্ল্যাগের সংখ্যা আপডেট
+// 🟡 এই ফাংশনটিই ঠিক করবে হলুদ লাইনটা কতটা চওড়া থাকবে
 function updateUI() {
   if (els.activeCount && els.progressBar) {
+    // টেক্সট আপডেট (কয়টি ফ্ল্যাগ বাকি আছে)
     els.activeCount.innerText = activeFlags.length;
+    
+    // ফ্ল্যাগের শতকরা পরিমাণ বের করে লাইনের Width (চওড়া) সেট করা
     let percentage = (activeFlags.length / TOTAL_FLAGS) * 100;
     els.progressBar.style.width = percentage + "%";
   }
