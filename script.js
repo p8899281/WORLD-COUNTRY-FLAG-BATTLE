@@ -507,7 +507,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (৪০ - ৪৫ সেকেন্ডে নিখুঁত বিজয়ী তৈরি)
+  // ⚔️ ২. মূল লড়াই ফেজ (ঠিক ৪০ - ৪৫ সেকেন্ডে উইনার নির্ধারণ)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -518,33 +518,41 @@ function gameLoop() {
     els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
     els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
 
-    // 🎯 ৪২.৫ সেকেন্ডকে নিখুঁত ১ উইনার টার্গেট ধরে পেসিং হিসেব
-    let targetTime = 42.5;
-    let progress = Math.min(1, elapsed / targetTime);
+    // 🎯 ৪০ সেকেন্ডের আগে যেন কিছুতেই উইনার না হয় তার জন্য ন্যূনতম ফ্ল্যাগ সীমা
+    let minAllowedFlags = 1;
+    if (elapsed < 38) {
+      minAllowedFlags = Math.max(8, Math.floor(TOTAL_FLAGS * Math.pow(1 - (elapsed / 42), 1.25)));
+    } else if (elapsed < 40.5) {
+      minAllowedFlags = 3;
+    } else if (elapsed < 42.0) {
+      minAllowedFlags = 2;
+    } else {
+      minAllowedFlags = 1;
+    }
 
-    // সময়ের সাথে সাথে ১ টিতে নামিয়ে আনার মসৃণ প্রেশার কার্ভ
-    let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * Math.pow(1 - progress, 1.35)));
-    let excessFlags = Math.max(0, activeFlags.length - targetCount);
-    let pressureMult = 1.0 + (excessFlags / 15) * 0.35;
+    // 🎯 সঠিক গতি নিয়ন্ত্রণ
+    let targetPacedCount = Math.max(1, Math.floor(TOTAL_FLAGS * Math.pow(Math.max(0, 1 - (elapsed / 42.5)), 1.15)));
+    let excessFlags = Math.max(0, activeFlags.length - targetPacedCount);
+    let pressureMult = 1.0 + (excessFlags / 12) * 0.35;
     
-    let speedMult = (2.2 + Math.pow(progress, 1.3) * 4.2) * pressureMult; 
+    let speedMult = (2.2 + Math.pow(Math.min(1, elapsed / 42.5), 1.2) * 3.8) * pressureMult; 
 
-    // 🎯 ৩৯ থেকে ৪৪ সেকেন্ডের মধ্যে গ্যাপ বৃদ্ধি করে দ্রুত ১টি দেশের ফলাফল নিশ্চিত করা
+    // ৪০ সেকেন্ডের পর দরজা বড় হবে যেন দ্রুত অবশিষ্ট পতাকা বের হতে পারে
     let activeGapSize = gapSize;
-    if (elapsed >= 39 && activeFlags.length > 1) {
-      let endgameProgress = Math.min(1, (elapsed - 39) / 4);
-      activeGapSize = gapSize * (1 + endgameProgress * 1.8);
+    if (elapsed >= 40.0 && activeFlags.length > 1) {
+      let finalPush = Math.min(1, (elapsed - 40.0) / 3.0);
+      activeGapSize = gapSize * (1 + finalPush * 2.2);
     }
     
-    // ৪৪.৫ সেকেন্ডে পৌঁছে গেলে দ্রুত উইনার নির্ধারণ
-    if (elapsed >= 44.2 && activeFlags.length > 1) {
+    // ৪৩.৮ সেকেন্ডে পৌঁছে গেলে শেষ ১ জনকে রেখে ফলাফল নিশ্চিত করা
+    if (elapsed >= 43.8 && activeFlags.length > 1) {
       while (activeFlags.length > 1) {
         eliminate(activeFlags[activeFlags.length - 1]);
       }
     }
 
-    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progress * 0.45));
-    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progress * 0.45));
+    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + (elapsed / 45) * 0.45));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + (elapsed / 45) * 0.45));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -552,7 +560,7 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    // বল-টু-বল ইলাস্টিক সংঘর্ষ
+    // বল-টু-বল সংঘর্ষ
     const len = activeFlags.length;
     for (let i = 0; i < len; i++) {
       let f1 = activeFlags[i];
@@ -589,10 +597,9 @@ function gameLoop() {
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
       
-      // কেন্দ্র থেকে পরিধির দিকে নিয়মিত মসৃণ ধাক্কা
       if (dist < arenaR * 0.70) {
-          f.vx += (dx / dist) * 0.28 * pressureMult;
-          f.vy += (dy / dist) * 0.28 * pressureMult;
+          f.vx += (dx / dist) * 0.25 * pressureMult;
+          f.vy += (dy / dist) * 0.25 * pressureMult;
       }
 
       f.x += f.vx * (speedMult * 0.28);
@@ -602,9 +609,10 @@ function gameLoop() {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
 
+        // 🎯 সময়ের আগে যাতে বেশি পতাকা আউট না হয়, সেজন্য সেফটি বাউন্স
         if (inGap) {
             let inYellow = isAngleBetween(fAngle, yStart, yEnd);
-            if (inYellow) {
+            if (inYellow || activeFlags.length <= minAllowedFlags) {
                 bounceFlag(f, dx, dy, dist); 
             } else {
                 if (dist > arenaR + 4) { eliminate(f); }
