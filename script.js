@@ -29,7 +29,7 @@ const whiteSpeed = 0.018;
 const yellowSpeed = 0.052; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
-let viewWidth = 0, viewHeight = 0; // স্ক্রিন সাইজ ক্যাশ রাখার জন্য
+let viewWidth = 0, viewHeight = 0;
 let dpr = 1;
 let isPlaying = false;
 let round = 1;
@@ -235,13 +235,11 @@ function startGame(mode) {
   requestAnimationFrame(gameLoop);
 }
 
-// ⚡ OPTIMIZED RESIZATION & DPI CAPPING FOR 60FPS
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   viewWidth = rect.width;
   viewHeight = rect.height;
   
-  // dpr সর্বোচ্চ 2 দিয়ে ক্যাপ করা হলো যাতে ল্যাগ না হয়
   dpr = Math.min(window.devicePixelRatio || 1, 2);
   
   canvas.width = viewWidth * dpr;
@@ -251,7 +249,7 @@ function resizeCanvas() {
   ctx.scale(dpr, dpr);
 
   arenaX = viewWidth / 2;
-  arenaY = viewHeight / 2 - 25;
+  arenaY = viewHeight / 2 - 35;
   arenaR = Math.min(arenaX, arenaY) - 35; 
 
   const itemWidth = 22;
@@ -435,7 +433,6 @@ function gameLoop() {
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-  // ⚡ HIGH PERFORMANCE COLLISION DETECTION
   const len = activeFlags.length;
   for (let i = 0; i < len; i++) {
     let f1 = activeFlags[i];
@@ -518,19 +515,27 @@ function gameLoop() {
   ctx.strokeStyle = "#00d2ff";
   ctx.stroke();
 
-  // 🟡 ৩. গোল্ডেন ইয়োলো হরাইজন্টাল লাইন (রিংয়ের ঠিক নিচে এবং জমানো পতাকার উপরে)
+  // 🟡 ৩. মোটা গোল্ডেন ইয়োলো হরাইজন্টাল লাইন (ডান থেকে বাম দিকে কমে আসবে)
   let flagRatio = activeFlags.length / TOTAL_FLAGS;
-  let maxHalfWidth = arenaR * 0.85; 
-  let currentHalfWidth = maxHalfWidth * flagRatio;
-  let lineY = arenaY + arenaR + 14; // রিংয়ের নিচে সেটিং
+  let fullLineWidth = arenaR * 1.7; // পুরো লাইনের সর্বোচ্চ দৈর্ঘ্য
+  let lineStartX = arenaX - (fullLineWidth / 2); // বাঁ দিকের স্টার্টিং পয়েন্ট
+  let currentLineWidth = fullLineWidth * flagRatio;
+  let lineY = arenaY + arenaR + 12; // রিংয়ের নিচে পজিশন
 
   ctx.beginPath();
-  ctx.moveTo(arenaX - currentHalfWidth, lineY);
-  ctx.lineTo(arenaX + currentHalfWidth, lineY);
-  ctx.lineWidth = 3;
+  ctx.moveTo(lineStartX, lineY);
+  ctx.lineTo(lineStartX + currentLineWidth, lineY);
+  ctx.lineWidth = 6; // লাইন মোটা করা হয়েছে
   ctx.strokeStyle = "#ffd700";
   ctx.lineCap = "round";
   ctx.stroke();
+
+  // 🏷️ ৪. লাইনের ঠিক নিচে "KOTO BY KOTO FLAG ACHE" টেক্সট
+  ctx.font = "bold 13px sans-serif";
+  ctx.fillStyle = "#ffd700";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 8);
 
   // HD Font Rendering
   ctx.textAlign = "center";
