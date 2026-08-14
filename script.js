@@ -307,12 +307,13 @@ function beginBattle() {
   window.addEventListener("resize", resizeCanvas);
   
   initGame();
-  startLeaderboardAutoCycle(); // 🔄 অটো-রোটেশন চালু
+  startLeaderboardAutoCycle();
   isPlaying = true;
   startBGM(); 
   requestAnimationFrame(gameLoop);
 }
 
+// 🎯 রিং ও টেক্সটকে ওপরে তুলে ফাঁকা জায়গা তৈরির ডায়নামিক ফাংশন
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   viewWidth = rect.width;
@@ -330,18 +331,28 @@ function resizeCanvas() {
   ctx.imageSmoothingQuality = "high";
 
   arenaX = viewWidth / 2;
-  arenaY = viewHeight / 2 - 35;
-  arenaR = Math.min(arenaX, arenaY) - 35; 
 
-  const itemWidth = 22;
+  const itemWidth = 20;
   const itemsPerRow = Math.max(10, Math.floor((viewWidth - 20) / itemWidth));
-  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 11;
+  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 10;
+  
+  // নিচে ১৯৩টি ফ্ল্যাগ জমা হওয়ার জন্য সংরক্ষিত উচ্চতা
+  const totalDeadRows = Math.ceil(TOTAL_FLAGS / itemsPerRow);
+  const deadFlagsHeight = totalDeadRows * 14 + 10;
+
+  const topReserved = 100; // উপরের হেডার ও কোয়ালিফাইড বোর্ডের জায়গা
+  const bottomReserved = deadFlagsHeight + 42; // নিচের ফ্ল্যাগ ও কাউন্টার লাইনের নিরাপদ ব্যবধান
+  const availableH = Math.max(180, viewHeight - topReserved - bottomReserved);
+
+  // রিং ও লাইন ওপরে রাখা হয়েছে যাতে নিচে কখনোই ওভারল্যাপ না হয়
+  arenaR = Math.min((viewWidth - 36) / 2, availableH / 2);
+  arenaY = topReserved + (availableH / 2) - 10;
 
   deadFlags.forEach((flag, idx) => {
     const col = idx % itemsPerRow;
     const row = Math.floor(idx / itemsPerRow);
     flag.targetX = startX + col * itemWidth;
-    flag.targetY = viewHeight - 12 - (row * 18);
+    flag.targetY = viewHeight - 8 - (row * 14);
     if (flag.settled) {
       flag.x = flag.targetX;
       flag.y = flag.targetY;
@@ -398,14 +409,14 @@ function eliminate(flag) {
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   
   const slotIndex = deadFlags.length;
-  const itemWidth = 22;
+  const itemWidth = 20;
   const itemsPerRow = Math.max(10, Math.floor((viewWidth - 20) / itemWidth));
   const col = slotIndex % itemsPerRow;
   const row = Math.floor(slotIndex / itemsPerRow);
   
-  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 11;
+  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 10;
   flag.targetX = startX + col * itemWidth;
-  flag.targetY = viewHeight - 12 - (row * 18);
+  flag.targetY = viewHeight - 8 - (row * 14);
   flag.settled = false;
 
   deadFlags.push(flag); 
@@ -448,7 +459,6 @@ function recordQualifier(flag) {
   renderLeaderboard();
 }
 
-// 🔄 ৫টি করে পেজ স্বয়ংক্রিয়ভাবে পরিবর্তনের টাইমার
 function startLeaderboardAutoCycle() {
   if (leaderboardInterval) clearInterval(leaderboardInterval);
   leaderboardInterval = setInterval(() => {
@@ -459,10 +469,9 @@ function startLeaderboardAutoCycle() {
     } else {
       leaderboardPage = 0;
     }
-  }, 3500); // ৩.৫ সেকেন্ড পর পর পেজ পরিবর্তন হবে
+  }, 3500);
 }
 
-// 📋 ৫টি স্লটের পেজ রেন্ডারার (বাকি স্লট স্বয়ংক্রিয়ভাবে খালি থাকবে)
 function renderLeaderboard() {
   if (qualifiedTeams.length === 0) {
     let emptyHtml = `
@@ -494,7 +503,6 @@ function renderLeaderboard() {
     `;
   }).join("");
 
-  // 🎯 ৫টির মধ্যে বাকি থাকা স্লটগুলো খালি রাখা (যেমন: ৭টির মধ্যে ২য় পেজে ৩টি খালি থাকবে)
   for (let k = pageItems.length; k < 5; k++) {
     rowsHtml += `<div class="board-row empty-row" style="visibility:hidden;">&nbsp;</div>`;
   }
@@ -712,7 +720,7 @@ function gameLoop() {
     ctx.stroke();
   }
 
-  // নিচে এলিমিনেটেড ফ্ল্যাগ সাজানো
+  // নিচে এলিমিনেটেড ফ্ল্যাগ সাজানো (ফাঁকা স্পেসে মসৃণভাবে অবস্থান নেওয়া)
   for (let f of deadFlags) {
       if (!f.settled) {
           f.x += (f.targetX - f.x) * 0.18;
@@ -728,18 +736,18 @@ function gameLoop() {
       }
   }
 
-  // 🟡 ৩. গোল্ডেন প্রোগ্রেস লাইন ও সাদা ব্যাকগ্রাউন্ড
+  // 🟡 ৩. গোল্ডেন প্রোগ্রেস লাইন (উপরে রিংয়ের নিচেই নির্ভুল দূরত্বে)
   let flagRatio = activeFlags.length / TOTAL_FLAGS;
-  let fullLineWidth = arenaR * 1.7; 
+  let fullLineWidth = arenaR * 1.6; 
   let lineStartX = arenaX - (fullLineWidth / 2); 
   let currentLineWidth = fullLineWidth * flagRatio;
-  let lineY = arenaY + arenaR + 22; 
+  let lineY = arenaY + arenaR + 16; 
 
   // (A) ব্যাকগ্রাউন্ড সাদা ট্র্যাক
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
   ctx.lineTo(lineStartX + fullLineWidth, lineY);
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 5;
   ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
   ctx.lineCap = "round";
   ctx.stroke();
@@ -748,23 +756,23 @@ function gameLoop() {
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
   ctx.lineTo(lineStartX + currentLineWidth, lineY);
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 5;
   ctx.strokeStyle = "#ffd700";
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. আল্ট্রা-শার্প সাদা টেক্সট
-  ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+  // 🏷️ ৪. আল্ট্রা-শার্প সাদা টেক্সট (লাইনের ঠিক নিচে পরিষ্কার দৃশ্যমান)
+  ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 10);
+  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 8);
 
   // 🎨 আল্ট্রা এইচডি শার্প ইমোজি ফন্ট রেন্ডারিং
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   
-  ctx.font = "16px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.font = "14px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
   ctx.globalAlpha = 0.85; 
   for (let f of deadFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
