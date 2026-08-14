@@ -33,6 +33,11 @@ let dpr = 1;
 let isPlaying = false;
 let round = 1;
 
+// ⏱️ টাইমার ও ওয়ার্ম-আপ স্টেট
+let isWarmup = true;
+let warmupStartTime = 0;
+const warmupDuration = 2.5; // ২.৫ সেকেন্ড ভাইব্রেট ও বাউন্স করবে
+
 let startTime = 0;
 let roundDuration = 45; 
 
@@ -168,19 +173,6 @@ function playSound(type, intensity = 1) {
   } catch (e) {}
 }
 
-// 🔊 রাউন্ড নাম্বার বলার ভয়েস ফাংশন
-function speakRound(roundNum) {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance("Round " + roundNum);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.0;
-    utterance.lang = "en-US";
-    window.speechSynthesis.speak(utterance);
-  }
-}
-
-// 🔊 উইনার ঘোষণা করার ভয়েস ফাংশন
 function speakWinner(name) {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
@@ -264,7 +256,6 @@ function beginBattle() {
   window.addEventListener("resize", resizeCanvas);
   
   initGame();
-  speakRound(round); // 📢 রাউন্ড ১ ঘোষণা
   isPlaying = true;
   startBGM(); 
   requestAnimationFrame(gameLoop);
@@ -306,7 +297,9 @@ function resizeCanvas() {
 function initGame() {
   flags = [];
   deadFlags = [];
-  startTime = Date.now();
+  
+  isWarmup = true;
+  warmupStartTime = Date.now();
   
   for (let i = 0; i < TOTAL_FLAGS; i++) {
     let country = countryList[i];
@@ -315,7 +308,7 @@ function initGame() {
     let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.82);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 9 + Math.random() * 6;
+    let speed = 12 + Math.random() * 8; // তীব্র গতিতে শুরু
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -384,7 +377,6 @@ function declareWinner(flag) {
         round++;
         document.getElementById("roundText").innerText = round;
         initGame();
-        speakRound(round); // 📢 পরবর্তী রাউন্ডের নাম্বার ঘোষণা
         isPlaying = true;
         startBGM(); 
         requestAnimationFrame(gameLoop);
@@ -448,97 +440,158 @@ function bounceFlag(f, dx, dy, dist) {
 function gameLoop() {
   if (!isPlaying) return;
   
-  let elapsed = (Date.now() - startTime) / 1000;
-  let timeLeft = Math.max(0, roundDuration - elapsed);
-  
-  let mins = Math.floor(timeLeft / 60);
-  let secs = Math.floor(timeLeft % 60);
-  els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
-
-  let progress = Math.min(1, elapsed / roundDuration);
-
-  let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.72))));
-  let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
-  
-  let speedMult = (2.6 + Math.pow(progress, 1.4) * 4.8) * pressureMult; 
-
-  let activeGapSize = (timeLeft <= 5 && activeFlags.length > 1) 
-    ? gapSize * (1 + (5 - timeLeft) * 0.45) 
-    : gapSize;
-  
-  whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progress * 0.4));
-  yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progress * 0.4));
-  
   ctx.clearRect(0, 0, viewWidth, viewHeight);
-  
-  let gStart = whiteAngle;
-  let gEnd = normalizeAngle(whiteAngle + activeGapSize);
-  
-  let yStart = yellowAngle;
-  let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-  const len = activeFlags.length;
-  for (let i = 0; i < len; i++) {
-    let f1 = activeFlags[i];
-    for (let j = i + 1; j < len; j++) {
-      let f2 = activeFlags[j];
-      let dx = f2.x - f1.x;
-      let dy = f2.y - f1.y;
-      let distSq = dx * dx + dy * dy;
-      let minDist = f1.r + f2.r;
-      if (distSq < minDist * minDist && distSq > 0.0001) {
-        let dist = Math.sqrt(distSq);
-        let overlap = minDist - dist;
-        let nx = dx / dist;
-        let ny = dy / dist;
-        
-        f1.x -= nx * overlap * 0.3;
-        f1.y -= ny * overlap * 0.3;
-        f2.x += nx * overlap * 0.3;
-        f2.y += ny * overlap * 0.3;
-        
-        let p = (f1.vx * nx + f1.vy * ny - (f2.vx * nx + f2.vy * ny));
-        if (p < 0) {
-          f1.vx -= p * nx;
-          f1.vy -= p * ny;
-          f2.vx += p * nx;
-          f2.vy += p * ny;
+  // -------------------------------------------------------------
+  // ⚡ ১. ওয়ার্ম-আপ মোড (২.৫ সেকেন্ডের ভাইব্রেট ও রিংয়ের ভেতর বাউন্স)
+  // -------------------------------------------------------------
+  if (isWarmup) {
+    let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
+    
+    els.timerText.innerText = `00:45`;
+    els.timeText2.innerText = `READY!`;
+
+    // পুরো বন্ধ সাদা রিং
+    ctx.beginPath();
+    ctx.arc(arenaX, arenaY, arenaR, 0, Math.PI * 2);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+
+    for (let f of activeFlags) {
+      // হাই-স্পিড ভাইব্রেশন ও জিটার
+      let jitterX = (Math.random() - 0.5) * 8;
+      let jitterY = (Math.random() - 0.5) * 8;
+      
+      f.x += f.vx * 0.4 + jitterX;
+      f.y += f.vy * 0.4 + jitterY;
+
+      let dx = f.x - arenaX;
+      let dy = f.y - arenaY;
+      let dist = Math.hypot(dx, dy) || 1;
+
+      // রিংয়ের দেওয়ালে সম্পূর্ণ বন্ধ বাউন্স
+      if (dist > arenaR - f.r) {
+        bounceFlag(f, dx, dy, dist);
+      }
+    }
+
+    // ওয়ার্ম-আপ শেষ হলে মূল লড়াই চালু করা
+    if (warmupElapsed >= warmupDuration) {
+      isWarmup = false;
+      startTime = Date.now();
+    }
+  } 
+  // -------------------------------------------------------------
+  // ⚔️ ২. মূল ব্যাটল মোড (৪৫ সেকেন্ড কাউন্টডাউন ও এলিমিনেশন)
+  // -------------------------------------------------------------
+  else {
+    let elapsed = (Date.now() - startTime) / 1000;
+    let timeLeft = Math.max(0, roundDuration - elapsed);
+    
+    let mins = Math.floor(timeLeft / 60);
+    let secs = Math.floor(timeLeft % 60);
+    els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
+
+    let progress = Math.min(1, elapsed / roundDuration);
+
+    let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.72))));
+    let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
+    
+    let speedMult = (2.6 + Math.pow(progress, 1.4) * 4.8) * pressureMult; 
+
+    let activeGapSize = (timeLeft <= 5 && activeFlags.length > 1) 
+      ? gapSize * (1 + (5 - timeLeft) * 0.45) 
+      : gapSize;
+    
+    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progress * 0.4));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progress * 0.4));
+    
+    let gStart = whiteAngle;
+    let gEnd = normalizeAngle(whiteAngle + activeGapSize);
+    
+    let yStart = yellowAngle;
+    let yEnd = normalizeAngle(yellowAngle + yellowSize);
+
+    // ফ্ল্যাগ-টু-ফ্ল্যাগ কলিশন
+    const len = activeFlags.length;
+    for (let i = 0; i < len; i++) {
+      let f1 = activeFlags[i];
+      for (let j = i + 1; j < len; j++) {
+        let f2 = activeFlags[j];
+        let dx = f2.x - f1.x;
+        let dy = f2.y - f1.y;
+        let distSq = dx * dx + dy * dy;
+        let minDist = f1.r + f2.r;
+        if (distSq < minDist * minDist && distSq > 0.0001) {
+          let dist = Math.sqrt(distSq);
+          let overlap = minDist - dist;
+          let nx = dx / dist;
+          let ny = dy / dist;
+          
+          f1.x -= nx * overlap * 0.3;
+          f1.y -= ny * overlap * 0.3;
+          f2.x += nx * overlap * 0.3;
+          f2.y += ny * overlap * 0.3;
+          
+          let p = (f1.vx * nx + f1.vy * ny - (f2.vx * nx + f2.vy * ny));
+          if (p < 0) {
+            f1.vx -= p * nx;
+            f1.vy -= p * ny;
+            f2.vx += p * nx;
+            f2.vy += p * ny;
+          }
         }
       }
     }
-  }
 
-  for (let f of [...activeFlags]) {
-    let dx = f.x - arenaX;
-    let dy = f.y - arenaY;
-    let dist = Math.hypot(dx, dy) || 1;
-    
-    if (dist < arenaR * 0.65) {
-        f.vx += (dx / dist) * 0.25 * pressureMult;
-        f.vy += (dy / dist) * 0.25 * pressureMult;
-    }
+    for (let f of [...activeFlags]) {
+      let dx = f.x - arenaX;
+      let dy = f.y - arenaY;
+      let dist = Math.hypot(dx, dy) || 1;
+      
+      if (dist < arenaR * 0.65) {
+          f.vx += (dx / dist) * 0.25 * pressureMult;
+          f.vy += (dy / dist) * 0.25 * pressureMult;
+      }
 
-    f.x += f.vx * (speedMult * 0.28);
-    f.y += f.vy * (speedMult * 0.28);
-    
-    if (dist > arenaR - f.r) {
-      let fAngle = normalizeAngle(Math.atan2(dy, dx));
-      let inGap = isAngleBetween(fAngle, gStart, gEnd);
+      f.x += f.vx * (speedMult * 0.28);
+      f.y += f.vy * (speedMult * 0.28);
+      
+      if (dist > arenaR - f.r) {
+        let fAngle = normalizeAngle(Math.atan2(dy, dx));
+        let inGap = isAngleBetween(fAngle, gStart, gEnd);
 
-      if (inGap) {
-          let inYellow = isAngleBetween(fAngle, yStart, yEnd);
-          if (inYellow) {
-              bounceFlag(f, dx, dy, dist); 
-          } else {
-              if (dist > arenaR + 5) { eliminate(f); }
-          }
-      } else {
-          bounceFlag(f, dx, dy, dist);
+        if (inGap) {
+            let inYellow = isAngleBetween(fAngle, yStart, yEnd);
+            if (inYellow) {
+                bounceFlag(f, dx, dy, dist); 
+            } else {
+                if (dist > arenaR + 5) { eliminate(f); }
+            }
+        } else {
+            bounceFlag(f, dx, dy, dist);
+        }
       }
     }
+
+    // ১. সাদা রিং
+    ctx.beginPath();
+    ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+    
+    // ২. নীল নিয়ন আর্চ
+    ctx.beginPath();
+    ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#00d2ff";
+    ctx.stroke();
   }
 
+  // এলিমিনেটেড ফ্ল্যাগ সোজা লাইনে গিয়ে পৌঁছানো
   for (let f of deadFlags) {
       if (!f.settled) {
           f.x += (f.targetX - f.x) * 0.18;
@@ -553,20 +606,6 @@ function gameLoop() {
           }
       }
   }
-
-  // ১. সাদা রিং
-  ctx.beginPath();
-  ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = "#ffffff";
-  ctx.stroke();
-  
-  // ২. নীল নিয়ন আর্চ
-  ctx.beginPath();
-  ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = "#00d2ff";
-  ctx.stroke();
 
   // 🟡 ৩. গোল্ডেন প্রোগ্রেস লাইন ও সাদা ব্যাকগ্রাউন্ড
   let flagRatio = activeFlags.length / TOTAL_FLAGS;
