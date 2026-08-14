@@ -33,10 +33,9 @@ let dpr = 1;
 let isPlaying = false;
 let round = 1;
 
-// ⏱️ টাইমার ও ওয়ার্ম-আপ স্টেট
 let isWarmup = true;
 let warmupStartTime = 0;
-const warmupDuration = 2.5; // ২.৫ সেকেন্ড ভাইব্রেট ও বাউন্স করবে
+const warmupDuration = 2.5;
 
 let startTime = 0;
 let roundDuration = 45; 
@@ -294,6 +293,7 @@ function resizeCanvas() {
   });
 }
 
+// 🎯 রিংয়ের কেন্দ্রভাগে সুরক্ষিতভাবে স্পন করা
 function initGame() {
   flags = [];
   deadFlags = [];
@@ -304,11 +304,12 @@ function initGame() {
   for (let i = 0; i < TOTAL_FLAGS; i++) {
     let country = countryList[i];
     
+    // ৬০% রেডিয়াসের ভেতর স্পন করা হচ্ছে যেন কোনো অবস্থাতেই রিংয়ের বাইরে না যায়
     let spawnAngle = Math.random() * Math.PI * 2;
-    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.82);
+    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.60);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 12 + Math.random() * 8; // তীব্র গতিতে শুরু
+    let speed = 10 + Math.random() * 6;
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -411,15 +412,17 @@ function updateLeaderboard() {
     `).join("");
 }
 
+// ⚡ নিখুঁত রিং বাউন্স এবং পজিশন ক্ল্যাম্পিং (কখনোই বাইরে যাবে না)
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
-  let dot = (f.vx * nx) + (f.vy * ny);
   
+  // পজিশন বাধ্যতামূলকভাবে রিংয়ের ভেতরে লক করা
+  f.x = arenaX + nx * (arenaR - f.r);
+  f.y = arenaY + ny * (arenaR - f.r);
+
+  let dot = (f.vx * nx) + (f.vy * ny);
   if (dot > 0) {
-    f.x = arenaX + nx * (arenaR - f.r);
-    f.y = arenaY + ny * (arenaR - f.r);
-    
     f.vx -= 2.05 * dot * nx;
     f.vy -= 2.05 * dot * ny;
     
@@ -443,7 +446,7 @@ function gameLoop() {
   ctx.clearRect(0, 0, viewWidth, viewHeight);
 
   // -------------------------------------------------------------
-  // ⚡ ১. ওয়ার্ম-আপ মোড (২.৫ সেকেন্ডের ভাইব্রেট ও রিংয়ের ভেতর বাউন্স)
+  // ⚡ ১. ওয়ার্ম-আপ ফেজ (রিং সম্পূর্ণ বন্ধ ও ভেতরে ভাইব্রেশন)
   // -------------------------------------------------------------
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
@@ -451,39 +454,57 @@ function gameLoop() {
     els.timerText.innerText = `00:45`;
     els.timeText2.innerText = `READY!`;
 
-    // পুরো বন্ধ সাদা রিং
     ctx.beginPath();
     ctx.arc(arenaX, arenaY, arenaR, 0, Math.PI * 2);
     ctx.lineWidth = 5;
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
+    const len = activeFlags.length;
+    for (let i = 0; i < len; i++) {
+      let f1 = activeFlags[i];
+      for (let j = i + 1; j < len; j++) {
+        let f2 = activeFlags[j];
+        let dx = f2.x - f1.x;
+        let dy = f2.y - f1.y;
+        let distSq = dx * dx + dy * dy;
+        let minDist = f1.r + f2.r;
+        if (distSq < minDist * minDist && distSq > 0.0001) {
+          let dist = Math.sqrt(distSq);
+          let overlap = minDist - dist;
+          let nx = dx / dist;
+          let ny = dy / dist;
+          f1.x -= nx * overlap * 0.25;
+          f1.y -= ny * overlap * 0.25;
+          f2.x += nx * overlap * 0.25;
+          f2.y += ny * overlap * 0.25;
+        }
+      }
+    }
+
     for (let f of activeFlags) {
-      // হাই-স্পিড ভাইব্রেশন ও জিটার
-      let jitterX = (Math.random() - 0.5) * 8;
-      let jitterY = (Math.random() - 0.5) * 8;
-      
-      f.x += f.vx * 0.4 + jitterX;
-      f.y += f.vy * 0.4 + jitterY;
+      let jitterX = (Math.random() - 0.5) * 3;
+      let jitterY = (Math.random() - 0.5) * 3;
+
+      f.x += f.vx * 0.35 + jitterX;
+      f.y += f.vy * 0.35 + jitterY;
 
       let dx = f.x - arenaX;
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
 
-      // রিংয়ের দেওয়ালে সম্পূর্ণ বন্ধ বাউন্স
       if (dist > arenaR - f.r) {
         bounceFlag(f, dx, dy, dist);
       }
     }
 
-    // ওয়ার্ম-আপ শেষ হলে মূল লড়াই চালু করা
     if (warmupElapsed >= warmupDuration) {
       isWarmup = false;
       startTime = Date.now();
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল ব্যাটল মোড (৪৫ সেকেন্ড কাউন্টডাউন ও এলিমিনেশন)
+  // ⚔️ ২. মূল লড়াই ফেজ (৪৫ সেকেন্ড কাউন্টডাউন ও এলিমিনেশন)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -514,7 +535,6 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    // ফ্ল্যাগ-টু-ফ্ল্যাগ কলিশন
     const len = activeFlags.length;
     for (let i = 0; i < len; i++) {
       let f1 = activeFlags[i];
@@ -591,7 +611,7 @@ function gameLoop() {
     ctx.stroke();
   }
 
-  // এলিমিনেটেড ফ্ল্যাগ সোজা লাইনে গিয়ে পৌঁছানো
+  // নিচে এলিমিনেটেড ফ্ল্যাগ সাজানো
   for (let f of deadFlags) {
       if (!f.settled) {
           f.x += (f.targetX - f.x) * 0.18;
@@ -632,7 +652,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. লাইনের নিচে সাদা কাউন্ট টেক্সট
+  // 🏷️ ৪. লাইনের নিচে সাদা টেক্সট
   ctx.font = "bold 13px sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
