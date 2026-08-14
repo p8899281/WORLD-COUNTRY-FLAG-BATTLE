@@ -39,11 +39,11 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const baseGapSize = Math.PI / 3.2;   
-const yellowSize = Math.PI / 4.2;    
+const baseGapSize = Math.PI / 3.4;   
+const yellowSize = Math.PI / 4.5;    
 
-const whiteSpeed = 0.038; 
-const yellowSpeed = 0.088; 
+const whiteSpeed = 0.042; 
+const yellowSpeed = 0.092; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
@@ -228,7 +228,7 @@ function playSound(type, intensity = 1) {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const pitch = 550 + Math.random() * 80 + Math.min(intensity, 3) * 30;
+      const pitch = 540 + Math.random() * 90 + Math.min(intensity, 3) * 30;
       osc.type = "sine";
       
       osc.frequency.setValueAtTime(pitch, now);
@@ -518,7 +518,7 @@ function initGame() {
     els.stageLabel.innerText = "CHAMPIONSHIP";
     els.boardHeading.innerText = "FINALISTS LEADERBOARD";
   } else {
-    roundDuration = 45; // রেগুলার রাউন্ড ৪৫ সেকেন্ড
+    roundDuration = 45; // সাধারণ রাউন্ড ৪৫ সেকেন্ড
 
     currentPool = countryList;
     TOTAL_FLAGS = countryList.length;
@@ -536,7 +536,7 @@ function initGame() {
     let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.65);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 14.0 + Math.random() * 8.0;
+    let speed = 12.0 + Math.random() * 8.0;
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -618,7 +618,6 @@ function eliminate(flag) {
 
   deadFlags.push(flag); 
   
-  // 🎙️ ফাইনাল রাউন্ডে পোডিয়াম ট্র্যাকিং ও নকআউট বিরতি
   if (isFinalRound) {
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
@@ -713,7 +712,6 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -747,7 +745,6 @@ function declareWinner(flag) {
       return; 
     }
 
-    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     els.winnerHeading.innerText = "ROUND WINNER";
@@ -841,26 +838,29 @@ function renderLeaderboard() {
   els.qualifiedList.innerHTML = rowsHtml;
 }
 
+// 💥 সুপার-ইলাস্টিক নিখুঁত বাউন্স ফাংশন (কোনো আটকে যাওয়া বা থেমে যাওয়া ছাড়া)
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  f.x = arenaX + nx * (arenaR - f.r - 2.5);
-  f.y = arenaY + ny * (arenaR - f.r - 2.5);
+  // ঠিক পরিধির গায়ে অবস্থান নিশ্চিত করা
+  f.x = arenaX + nx * (arenaR - f.r - 0.5);
+  f.y = arenaY + ny * (arenaR - f.r - 0.5);
 
   let dot = (f.vx * nx) + (f.vy * ny);
   if (dot > 0) {
-    f.vx -= 2.05 * dot * nx;
-    f.vy -= 2.05 * dot * ny;
+    // 100% এনার্জি রিফ্লেকশন + হালকা ট্যানজেনশিয়াল স্প্রেড
+    f.vx -= 2.02 * dot * nx;
+    f.vy -= 2.02 * dot * ny;
     
     let tangX = -ny;
     let tangY = nx;
-    let scatter = (Math.random() - 0.5) * 3.5;
+    let scatter = (Math.random() - 0.5) * 4.0;
     f.vx += tangX * scatter;
     f.vy += tangY * scatter;
     
     const speed = Math.abs(dot);
-    if (speed > 0.5) {
+    if (speed > 0.4) {
       playSound("bounce", speed);
     }
   }
@@ -937,7 +937,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (৪০ - ৪৫ সেকেন্ডে সাধারণ রাউন্ড, ৩ - ৩.৫ মিনিটে ফাইনাল)
+  // ⚔️ ২. মূল লড়াই ফেজ (৪০ - ৪৫ সেকেন্ডে স্বাভাবিক রাউন্ড, ৩ - ৩.৫ মিনিটে ফাইনাল)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -949,27 +949,28 @@ function gameLoop() {
 
     updateRoundFooterInfo(elapsed);
 
-    let targetDuration = isFinalRound ? 190.0 : 41.5;
+    // সেন্ট্রিফিউগাল পেসিং
+    let targetDuration = isFinalRound ? 195.0 : 42.0;
     let timeRatio = Math.min(1, elapsed / targetDuration);
 
-    let outwardPush = 0.28 + Math.pow(timeRatio, 1.3) * 0.85;
-    let speedMult = 2.4 + timeRatio * 2.6;
+    let outwardPush = 0.32 + Math.pow(timeRatio, 1.25) * 0.85;
+    let speedMult = 2.5 + timeRatio * 2.8;
 
     let activeGapSize = baseGapSize;
     if (isFinalRound) {
       if (activeFlags.length <= 10) {
         activeGapSize = baseGapSize * 0.5;
-      } else if (elapsed >= 165.0) {
-        let lateRatio = Math.min(1, (elapsed - 165.0) / 25.0);
+      } else if (elapsed >= 160.0) {
+        let lateRatio = Math.min(1, (elapsed - 160.0) / 30.0);
         activeGapSize = baseGapSize * (1 + lateRatio * 1.1);
       }
-    } else if (elapsed >= 36.0) {
-      let lateRatio = Math.min(1, (elapsed - 36.0) / 6.5);
-      activeGapSize = baseGapSize * (1 + lateRatio * 1.2);
+    } else if (elapsed >= 32.0) {
+      let lateRatio = Math.min(1, (elapsed - 32.0) / 9.0);
+      activeGapSize = baseGapSize * (1 + lateRatio * 1.1);
     }
 
-    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.4));
-    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + timeRatio * 0.4));
+    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.35));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + timeRatio * 0.35));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -977,15 +978,16 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    // ⏱️ নিখুঁত পেসিং ক্যালকুলেটর
+    // 🎯 মসৃণ টাইম পেসিং ক্যালকুলেশন
     let targetMaxAlive;
     if (elapsed < targetDuration) {
       let p = elapsed / targetDuration;
-      targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.2))));
+      targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.12))));
     } else {
       targetMaxAlive = 1;
     }
 
+    // ফ্ল্যাগ-টু-ফ্ল্যাগ সংঘর্ষ ও বাউন্স
     const len = activeFlags.length;
     const minDist = 20;
     const minDistSq = 400;
@@ -1006,17 +1008,17 @@ function gameLoop() {
           let nx = dx / dist;
           let ny = dy / dist;
           
-          f1.x -= nx * overlap * 0.45;
-          f1.y -= ny * overlap * 0.45;
-          f2.x += nx * overlap * 0.45;
-          f2.y += ny * overlap * 0.45;
+          f1.x -= nx * overlap * 0.48;
+          f1.y -= ny * overlap * 0.48;
+          f2.x += nx * overlap * 0.48;
+          f2.y += ny * overlap * 0.48;
           
           let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
           if (vrel > 0) {
-            f1.vx -= vrel * 0.95 * nx;
-            f1.vy -= vrel * 0.95 * ny;
-            f2.vx += vrel * 0.95 * nx;
-            f2.vy += vrel * 0.95 * ny;
+            f1.vx -= vrel * 1.02 * nx;
+            f1.vy -= vrel * 1.02 * ny;
+            f2.vx += vrel * 1.02 * nx;
+            f2.vy += vrel * 1.02 * ny;
           }
         }
       }
@@ -1039,7 +1041,7 @@ function gameLoop() {
       f.x += f.vx * (speedMult * 0.28);
       f.y += f.vy * (speedMult * 0.28);
       
-      // 🚀 নির্গমন (Escape) ও বাউন্স লজিক
+      // 🚀 নির্গমন (Exit) ও দেওয়াল বাউন্স লজিক
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
@@ -1047,20 +1049,19 @@ function gameLoop() {
         if (inGap) {
             let inYellow = isAngleBetween(fAngle, yStart, yEnd);
             if (inYellow) {
-                bounceFlag(f, dx, dy, dist); 
+                bounceFlag(f, dx, dy, dist); // নিয়ন আর্চে সলিড বাউন্স
             } else {
-                // উন্মুক্ত গ্যাপ: পেসিং অনুযায়ী বের হতে দেওয়া হবে
+                // খোলা মুখে কোনো বাধা নেই—ফ্ল্যাগ স্বাভাবিক গতিতে বাইরে বের হবে
                 if (activeFlags.length > targetMaxAlive) {
                     if (dist > arenaR + f.r + 2) {
-                        eliminate(f);
+                        eliminate(f); // বাইরে বের হওয়া নিশ্চিত হলে এলিমিনেট
                     }
-                    // বের হওয়ার সময় কোনো বাউন্স হবে না
                 } else {
-                    bounceFlag(f, dx, dy, dist);
+                    bounceFlag(f, dx, dy, dist); // শেষ বিজয়ী ধরে রাখার জন্য বাউন্স
                 }
             }
         } else {
-            bounceFlag(f, dx, dy, dist);
+            bounceFlag(f, dx, dy, dist); // সাদা দেওয়ালে ফুল বাউন্স
         }
       }
     }
