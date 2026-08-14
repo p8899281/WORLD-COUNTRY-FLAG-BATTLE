@@ -5,8 +5,6 @@ const els = {
   app: document.getElementById("app"),
   modeSelector: document.getElementById("mode-selector"),
   startScreen: document.getElementById("start-screen"),
-  activeCount: document.getElementById("activeCount"),
-  progressBar: document.getElementById("progressBar"),
   winnerOverlay: document.getElementById("winnerOverlay"),
   winnerName: document.getElementById("winnerName"),
   winnerFlagBox: document.getElementById("winnerFlagBox"),
@@ -56,7 +54,6 @@ function unlockAudio() {
   }
 }
 
-// 🖥️ Fullscreen Trigger Function
 function requestFullscreen() {
   const docEl = document.documentElement;
   if (docEl.requestFullscreen) {
@@ -242,7 +239,6 @@ function selectMode(mode) {
 function beginBattle() {
   unlockAudio();
 
-  // 🖥️ ফুল স্ক্রিন চেক
   const fsToggle = document.getElementById("fullscreenToggle");
   if (fsToggle && fsToggle.checked) {
     requestFullscreen();
@@ -310,7 +306,6 @@ function initGame() {
     flags.push(flagObj);
   }
   activeFlags = [...flags];
-  updateUI();
   updateLeaderboard();
 }
 
@@ -344,7 +339,6 @@ function eliminate(flag) {
   flag.settled = false;
 
   deadFlags.push(flag); 
-  updateUI();
   
   if (activeFlags.length === 1) {
       declareWinner(activeFlags[0]);
@@ -372,14 +366,6 @@ function declareWinner(flag) {
         startBGM(); 
         requestAnimationFrame(gameLoop);
     }, 5000);
-}
-
-function updateUI() {
-  if (els.activeCount && els.progressBar) {
-    els.activeCount.innerText = activeFlags.length;
-    let ratio = activeFlags.length / TOTAL_FLAGS;
-    els.progressBar.style.width = (ratio * 100) + "%";
-  }
 }
 
 function recordQualifier(flag) {
@@ -564,9 +550,9 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. লাইনের নিচে টেক্সট
+  // 🏷️ ৪. লাইনের নিচে টেক্সট (এখন সাদা রঙের)
   ctx.font = "bold 13px sans-serif";
-  ctx.fillStyle = "#ffd700";
+  ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 10);
