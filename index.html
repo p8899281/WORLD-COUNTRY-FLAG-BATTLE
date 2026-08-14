@@ -19,13 +19,19 @@
     </div>
   </div>
 
-  <!-- 📸 স্ক্রিনশটের হুবহু Start Battle Screen -->
+  <!-- Start Battle Screen with Fullscreen Option -->
   <div id="start-screen" class="overlay-screen hidden">
     <div class="start-box">
       <div class="start-flags-row">🇺🇸 🇧🇷 🇯🇵 🇫🇷 🇰🇷 🇩🇪 🇦🇷</div>
       <h1 class="start-title">COUNTRY FLAGS BATTLE</h1>
       <div class="start-underline"></div>
       
+      <!-- 🖥️ ফুল স্ক্রিন অপশন -->
+      <label class="fullscreen-option">
+        <input type="checkbox" id="fullscreenToggle" checked />
+        <span>🖥️ Launch in Fullscreen</span>
+      </label>
+
       <button class="start-battle-btn" onclick="beginBattle()">
         <span class="play-icon">▶</span> START THE BATTLE
       </button>
