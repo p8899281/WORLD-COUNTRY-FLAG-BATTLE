@@ -70,7 +70,7 @@ body {
   box-shadow: 0 0 15px var(--theme-green);
 }
 
-/* 📸 Start Battle Screen Style (Matching Screenshot) */
+/* Start Battle Screen Style */
 .start-box {
   display: flex;
   flex-direction: column;
@@ -98,7 +98,27 @@ body {
   width: 140px;
   height: 1px;
   background: rgba(255, 255, 255, 0.25);
-  margin-bottom: 30px;
+  margin-bottom: 20px;
+}
+
+/* 🖥️ Fullscreen Checkbox Styling */
+.fullscreen-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--theme-blue);
+  cursor: pointer;
+  user-select: none;
+}
+
+.fullscreen-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--theme-yellow);
+  cursor: pointer;
 }
 
 .start-battle-btn {
