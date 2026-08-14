@@ -47,6 +47,23 @@ let viewWidth = 0, viewHeight = 0;
 let dpr = 1;
 let isPlaying = false;
 
+// 📱 SCREEN WAKE LOCK (স্ক্রিন যাতে নিজে থেকে বন্ধ না হয়)
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch (err) {}
+}
+
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && isPlaying) {
+    await requestWakeLock();
+  }
+});
+
 // 🏆 টুর্নামেন্ট ও গ্র্যান্ড ফাইনাল স্টেট
 let round = 1;
 const MAX_QUALIFYING_ROUNDS = 60; 
@@ -348,6 +365,7 @@ function selectMode(mode) {
 
 function beginBattle() {
   unlockAudio();
+  requestWakeLock(); // 📱 স্ক্রিন অন রাখা নিশ্চিত করা
 
   const fsToggle = document.getElementById("fullscreenToggle");
   if (fsToggle && fsToggle.checked) {
@@ -418,7 +436,6 @@ function resizeCanvas() {
   });
 }
 
-// ⏱️ মোট ৬০ রাউন্ডের (৪৫:০০ মিনিট) রিভার্স টাইম কাউন্টডাউন
 function updateRoundFooterInfo(currentElapsed = 0) {
   if (isFinalRound) {
     if (els.roundProgressText) els.roundProgressText.innerText = "🏆 GRAND FINAL";
@@ -431,7 +448,7 @@ function updateRoundFooterInfo(currentElapsed = 0) {
   }
 
   if (els.finalCountdownText) {
-    const totalTournamentSecs = MAX_QUALIFYING_ROUNDS * roundDuration; // 60 * 45 = 2700s (45 mins)
+    const totalTournamentSecs = MAX_QUALIFYING_ROUNDS * roundDuration; 
     const elapsedSoFar = ((round - 1) * roundDuration) + currentElapsed;
     const remainingSecs = Math.max(0, totalTournamentSecs - elapsedSoFar);
 
@@ -828,7 +845,6 @@ function gameLoop() {
     let secs = Math.floor(timeLeft % 60);
     els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
 
-    // ⏱️ রিয়েল-টাইমে গ্র্যান্ড ফাইনালের রিভার্স টাইমার আপডেট
     updateRoundFooterInfo(elapsed);
 
     let timeRatio = Math.min(1, elapsed / 42.5);
