@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>World Country Flag Battle</title>
+<meta name="description" content="An automated 250-flag battle royale tournament, live in your browser." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-globe">🌍</span>
+      <div class="brand-text">
+        <h1>World Country Flag Battle</h1>
+        <span class="brand-sub" id="flagTotalSub">235 nations enter. One survives.</span>
+      </div>
+    </div>
+
+    <div class="stat-strip" role="status">
+      <div class="stat-cell">
+        <span class="stat-label">Stage</span>
+        <span class="stat-value" id="stageLabel">— Idle —</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">Round</span>
+        <span class="stat-value" id="roundLabel">0</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">Active Flags</span>
+        <span class="stat-value" id="activeLabel">0 / 0</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">Tournament Clock</span>
+        <span class="stat-value" id="clockLabel">00:00</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">Champions Crowned</span>
+        <span class="stat-value" id="championsCountLabel">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== QUALIFIED STRIP ===================== -->
+  <section class="qualified-strip" aria-label="Qualified for final">
+    <h2>Qualified for Final</h2>
+    <ol id="qualifiedList" class="qualified-list">
+      <li class="qualified-empty">No spotlight winners yet — battle hasn't started.</li>
+    </ol>
+  </section>
+
+  <!-- ===================== MAIN STAGE ===================== -->
+  <main class="stage">
+
+    <section class="arena-panel">
+      <div class="arena-wrap" id="arenaWrap">
+        <canvas id="arenaCanvas" width="1000" height="1000"></canvas>
+
+        <div class="overlay countdown-overlay" id="countdownOverlay" hidden>
+          <div class="countdown-num" id="countdownNum">3</div>
+        </div>
+
+        <div class="overlay stage-banner" id="stageBanner" hidden>
+          <div class="stage-banner-text" id="stageBannerText">KNOCKOUT STAGE</div>
+        </div>
+
+        <div class="overlay round-winner-overlay" id="roundWinnerOverlay" hidden>
+          <div class="rw-ring"></div>
+          <div class="rw-content">
+            <div class="rw-label">Round <span id="rwRound">1</span> Winner</div>
+            <div class="rw-flag" id="rwFlag">🏳️</div>
+            <div class="rw-name" id="rwName">—</div>
+          </div>
+        </div>
+
+        <div class="overlay idle-overlay" id="idleOverlay">
+          <div class="idle-content">
+            <div class="idle-title">Press START to begin the battle</div>
+            <div class="idle-sub">All flags enter. Physics, collisions and elimination decide the champion.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arena-caption">
+        <span class="dot dot-green"></span> Active
+        <span class="dot dot-gold"></span> Round Winner
+        <span class="dot dot-dim"></span> Eliminated
+      </div>
+    </section>
+
+    <aside class="side-panel">
+      <h2 class="side-title">🏆 All-Time Leaderboard</h2>
+      <div class="leaderboard-head">
+        <span>Rank</span><span>Country</span><span>Wins</span><span>Finals</span><span>Titles</span>
+      </div>
+      <ol id="leaderboardList" class="leaderboard-list">
+        <li class="lb-empty">No data yet. Start a tournament!</li>
+      </ol>
+    </aside>
+  </main>
+
+  <!-- ===================== FLAG GRID ===================== -->
+  <section class="flag-grid-panel">
+    <div class="flag-grid-head">
+      <h2>Tournament Tracker</h2>
+      <span id="flagGridCount">0 / 0 FLAGS</span>
+    </div>
+    <div class="flag-grid" id="flagGrid"></div>
+  </section>
+
+  <!-- ===================== CONTROLS ===================== -->
+  <footer class="controls-bar">
+    <div class="controls-group">
+      <button class="btn btn-primary" id="btnStart">▶ Start</button>
+      <button class="btn" id="btnPause">⏸ Pause</button>
+      <button class="btn" id="btnResume" hidden>⏵ Resume</button>
+      <button class="btn" id="btnRestart">⟳ Restart</button>
+      <button class="btn" id="btnFullscreen">⛶ Fullscreen</button>
+    </div>
+
+    <div class="controls-group">
+      <label class="toggle"><input type="checkbox" id="chkAuto" checked /> Auto Mode</label>
+      <label class="toggle"><input type="checkbox" id="chkSound" checked /> Sound</label>
+      <label class="toggle"><input type="checkbox" id="chkVoice" checked /> Voice</label>
+      <label class="toggle"><input type="checkbox" id="chkMusic" checked /> Music</label>
+    </div>
+
+    <div class="controls-group">
+      <label class="vol-label">Volume
+        <input type="range" id="rangeVolume" min="0" max="100" value="80" />
+      </label>
+      <div class="speed-group" role="group" aria-label="Battle speed">
+        <button class="btn btn-speed active" data-speed="1" id="spd1">×1</button>
+        <button class="btn btn-speed" data-speed="2" id="spd2">×2</button>
+        <button class="btn btn-speed" data-speed="4" id="spd4">×4</button>
+      </div>
+      <button class="btn" id="btnSettings">⚙ Settings</button>
+    </div>
+  </footer>
+
+  <!-- ===================== SETTINGS DRAWER ===================== -->
+  <div class="settings-backdrop" id="settingsBackdrop" hidden>
+    <div class="settings-panel" id="settingsPanel" role="dialog" aria-label="Game settings">
+      <div class="settings-head">
+        <h2>Game Settings</h2>
+        <button class="btn btn-icon" id="btnCloseSettings">✕</button>
+      </div>
+
+      <div class="settings-row">
+        <label for="selFlagCount">Number of Flags</label>
+        <select id="selFlagCount">
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="150">150</option>
+          <option value="200">200</option>
+          <option value="235" selected>All (235)</option>
+        </select>
+      </div>
+
+      <div class="settings-row">
+        <label for="selCollision">Collision Intensity</label>
+        <select id="selCollision">
+          <option value="low">Low</option>
+          <option value="normal" selected>Normal</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+
+      <div class="settings-row">
+        <label for="selSpeedDefault">Default Battle Speed</label>
+        <select id="selSpeedDefault">
+          <option value="1" selected>Slow (×1)</option>
+          <option value="2">Normal (×2)</option>
+          <option value="4">Fast (×4)</option>
+        </select>
+      </div>
+
+      <p class="settings-note">Flag-count changes apply to the <em>next</em> tournament so the current battle isn't disrupted.</p>
+
+      <button class="btn btn-primary settings-apply" id="btnApplySettings">Save Settings</button>
+    </div>
+  </div>
+
+  <!-- ===================== CHAMPION OVERLAY ===================== -->
+  <div class="champion-overlay" id="championOverlay" hidden>
+    <div class="champion-particles" id="championParticles"></div>
+    <div class="champion-content">
+      <div class="champion-title">🏆 WORLD CHAMPION 🏆</div>
+      <div class="champion-flag" id="champFlag">🏳️</div>
+      <div class="champion-name" id="champName">—</div>
+      <div class="champion-sub" id="champSub">Crowned after a full tournament of collisions and comebacks.</div>
+      <div class="champion-next" id="champNext"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="countries.js"></script>
+<script src="audio.js"></script>
+<script src="physics.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
