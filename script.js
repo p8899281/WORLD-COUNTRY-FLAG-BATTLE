@@ -56,6 +56,18 @@ function unlockAudio() {
   }
 }
 
+// 🖥️ Fullscreen Trigger Function
+function requestFullscreen() {
+  const docEl = document.documentElement;
+  if (docEl.requestFullscreen) {
+    docEl.requestFullscreen().catch(() => {});
+  } else if (docEl.webkitRequestFullscreen) {
+    docEl.webkitRequestFullscreen();
+  } else if (docEl.msRequestFullscreen) {
+    docEl.msRequestFullscreen();
+  }
+}
+
 function startBGM() {
   stopBGM();
   bgmStep = 0;
@@ -212,25 +224,30 @@ const countryData = [
   ["ZA","South Africa"],["KR","South Korea"],["SS","South Sudan"],["ES","Spain"],["LK","Sri Lanka"],
   ["SD","Sudan"],["SR","Suriname"],["SE","Sweden"],["CH","Switzerland"],["SY","Syria"],
   ["TJ","Tajikistan"],["TZ","Tanzania"],["TH","Thailand"],["TL","Timor-Leste"],["TG","Togo"],
-  ["TO","Tonga"],["TT","Trinidad and Tobago"],["TN","Tunisia"],["TR","Turkey"],["TM","Turkmenistan"],["TV","Tuvalu"],
-  ["UG","Uganda"],["UA","Ukraine"],["AE","United Arab Emirates"],["GB","United Kingdom"],["US","United States"],
-  ["UY","Uruguay"],["UZ","Uzbekistan"],["VU","Vanuatu"],["VE","Venezuela"],["VN","Vietnam"],
-  ["YE","Yemen"],["ZM","Zambia"],["ZW","Zimbabwe"]
+  ["TO","Tonga"],["TT","Trinidad and Tobago"],["TN","Tunisia"],["TR","Turkey"],["TM","Turkmenistan"],
+  ["TV","Tuvalu"],["UG","Uganda"],["UA","Ukraine"],["AE","United Arab Emirates"],["GB","United Kingdom"],
+  ["US","United States"],["UY","Uruguay"],["UZ","Uzbekistan"],["VU","Vanuatu"],["VE","Venezuela"],
+  ["VN","Vietnam"],["YE","Yemen"],["ZM","Zambia"],["ZW","Zimbabwe"]
 ];
 
 const countryList = countryData.map(([code, name]) => [code, name, codeToFlagEmoji(code)]);
 TOTAL_FLAGS = countryList.length;
 
-// 🎯 ১. মোড সিলেক্ট করার পর স্টার্ট স্ক্রিন দেখানো
 function selectMode(mode) {
   document.body.classList.add(mode + '-mode');
   els.modeSelector.classList.add("hidden");
   els.startScreen.classList.remove("hidden");
 }
 
-// 🎯 ২. 'START THE BATTLE' এ ক্লিক করলে আসল গেম শুরু হওয়া
 function beginBattle() {
   unlockAudio();
+
+  // 🖥️ ফুল স্ক্রিন চেক
+  const fsToggle = document.getElementById("fullscreenToggle");
+  if (fsToggle && fsToggle.checked) {
+    requestFullscreen();
+  }
+
   els.startScreen.classList.add("hidden");
   els.app.classList.remove("hidden");
   
