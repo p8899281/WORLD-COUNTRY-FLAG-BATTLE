@@ -41,24 +41,28 @@ let roundDuration = 45;
 
 let qualifiedTeams = [];
 
-// 🔊 HIGH-QUALITY SMOOTH AUDIO SYSTEM
+// 🎵 AUDIO SYSTEM (MP3 File Support + Web Audio Synthesizer)
 let audioCtx = null;
 let lastSoundTime = 0;
+
+// তোমার MP3 ফাইলটি ফোল্ডারে থাকলে সরাসরি এটি বাজবে
+const customBgm = new Audio('bgm.mp3');
+customBgm.loop = true;
+let useCustomBgm = false;
+
+customBgm.addEventListener('canplaythrough', () => {
+  useCustomBgm = true;
+});
 
 let bgmInterval = null;
 let bgmStep = 0;
 
-// শান্ত ও আরামদায়ক অ্যাম্বিয়েন্ট কর্ড প্রগ্রেশন (Lo-Fi / Chill Gaming Vibe)
-const bgmChords = [
-  [261.63, 329.63, 392.00], // C Major
-  [261.63, 329.63, 392.00],
-  [220.00, 261.63, 329.63], // A minor
-  [220.00, 261.63, 329.63],
-  [174.61, 220.00, 261.63], // F Major
-  [174.61, 220.00, 261.63],
-  [196.00, 246.94, 293.66], // G Major
-  [196.00, 246.94, 293.66]
+// 🎶 Marimba / Kalimba Pluck Melody Notes (অডিওর রিদমিক স্টাইল অনুযায়ী)
+const marimbaNotes = [
+  523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 659.25,
+  587.33, 698.46, 880.00, 1174.66, 880.00, 698.46, 783.99, 659.25
 ];
+const bassRoots = [261.63, 261.63, 220.00, 220.00, 174.61, 174.61, 196.00, 196.00];
 
 function unlockAudio() {
   if (!audioCtx) {
@@ -80,65 +84,73 @@ function requestFullscreen() {
   }
 }
 
-// 🎵 সফট ও শান্ত ব্যাকগ্রাউন্ড মিউজিক (Lo-Fi Ambient Beats)
+// 🎵 BGM হ্যান্ডলার (MP3 লোড হলে MP3 চলবে, না হলে প্রসিডিউরাল মারিম্বা বিট চলবে)
 function startBGM() {
   stopBGM();
+  
+  if (useCustomBgm) {
+    customBgm.currentTime = 0;
+    customBgm.volume = 0.65;
+    customBgm.play().catch(() => {});
+    return;
+  }
+
   bgmStep = 0;
   bgmInterval = setInterval(() => {
     if (!audioCtx || !isPlaying) return;
     try {
       const now = audioCtx.currentTime;
-      const currentChord = bgmChords[bgmStep % bgmChords.length];
 
-      // সফট প্যাড সাউন্ড (Sine + Lowpass filter)
-      currentChord.forEach((freq, index) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        
-        osc.type = "sine";
-        // এক অক্টেভ নিচে বাজানো হচ্ছে যাতে তীক্ষ্ণ না শোনায়
-        osc.frequency.setValueAtTime(freq / 2, now);
-        
-        // ভলিউম খুব সফট রাখা হয়েছে
-        gain.gain.setValueAtTime(0.015, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
-        
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(now);
-        osc.stop(now + 1.3);
-      });
+      // 1. Marimba / Wooden Pluck Synth
+      const pluckOsc = audioCtx.createOscillator();
+      const pluckGain = audioCtx.createGain();
+      const freq = marimbaNotes[bgmStep % marimbaNotes.length];
 
-      // হালকা রিদমিক থিক/বাস
+      pluckOsc.type = "sine";
+      pluckOsc.frequency.setValueAtTime(freq, now);
+
+      pluckGain.gain.setValueAtTime(0.045, now);
+      pluckGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+      pluckOsc.connect(pluckGain);
+      pluckGain.connect(audioCtx.destination);
+      pluckOsc.start(now);
+      pluckOsc.stop(now + 0.13);
+
+      // 2. Bouncy Warm Bass
       if (bgmStep % 2 === 0) {
         const bassOsc = audioCtx.createOscillator();
         const bassGain = audioCtx.createGain();
-        
+        const bassFreq = bassRoots[Math.floor(bgmStep / 2) % bassRoots.length];
+
         bassOsc.type = "triangle";
-        bassOsc.frequency.setValueAtTime(currentChord[0] / 4, now);
-        
-        bassGain.gain.setValueAtTime(0.04, now);
-        bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
-        
+        bassOsc.frequency.setValueAtTime(bassFreq, now);
+
+        bassGain.gain.setValueAtTime(0.05, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+
         bassOsc.connect(bassGain);
         bassGain.connect(audioCtx.destination);
         bassOsc.start(now);
-        bassOsc.stop(now + 0.45);
+        bassOsc.stop(now + 0.23);
       }
 
       bgmStep++;
     } catch (e) {}
-  }, 450); // ধীর ও আরামদায়ক টেম্পো
+  }, 135); // 135ms ফাস্ট ও ক্যাচি টেম্পো
 }
 
 function stopBGM() {
+  if (useCustomBgm) {
+    customBgm.pause();
+  }
   if (bgmInterval) {
     clearInterval(bgmInterval);
     bgmInterval = null;
   }
 }
 
-// 🔊 সফট ASMR স্টাইল সাউন্ড এফেক্টস
+// 💥 স্যাটিস্ফাইং ASMR Woodblock / Bubble Pop বাউন্স সাউন্ড
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -148,70 +160,64 @@ function playSound(type, intensity = 1) {
   try {
     const now = audioCtx.currentTime;
 
-    // 💥 সফট বাউন্স সাউন্ড (কানে লাগবে না, ডিপ পপ/থুড সাউন্ড)
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 35) return;
+      if (nowTime - lastSoundTime < 22) return;
       lastSoundTime = nowTime;
 
+      // Woodblock / Pop Transient
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      // পিচ অনেক কমানো হয়েছে (ডিপ সাউন্ডের জন্য)
-      const basePitch = 120 + Math.random() * 20 + Math.min(intensity, 3) * 10;
-      osc.type = "sine"; 
-      
-      osc.frequency.setValueAtTime(basePitch, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.05);
-      
-      // ভলিউম আরামদায়ক মাত্রায় সেট করা হয়েছে
-      const vol = Math.min(0.12, 0.04 + intensity * 0.02);
-      gain.gain.setValueAtTime(vol, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
-      
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + 0.07);
-
-    } 
-    // 🚪 আউট সাউন্ড (সফট শুশ/বাতাসের শব্দ)
-    else if (type === "out") {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
+      const pitch = 550 + Math.random() * 80 + Math.min(intensity, 3) * 30;
       osc.type = "sine";
-      osc.frequency.setValueAtTime(200 + Math.random() * 30, now);
-      osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
-      osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
       
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+      osc.frequency.setValueAtTime(pitch, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.035);
+      
+      const vol = Math.min(0.18, 0.08 + intensity * 0.03);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.16);
+      osc.stop(now + 0.045);
 
-    } 
-    // 🏆 উইনার সাউন্ড (আরামদায়ক হার্প/বেলস)
-    else if (type === "win") {
+    } else if (type === "out") {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(320 + Math.random() * 40, now);
+      osc.frequency.exponentialRampToValueAtTime(650, now + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.12);
+      
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.13);
+
+    } else if (type === "win") {
       stopBGM(); 
       const freqs = [523.25, 659.25, 783.99, 1046.50];
       freqs.forEach((freq, idx) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.10);
         
-        gain.gain.setValueAtTime(0.01, now + idx * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.15, now + idx * 0.12 + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.12 + 2.0);
+        gain.gain.setValueAtTime(0.01, now + idx * 0.10);
+        gain.gain.exponentialRampToValueAtTime(0.20, now + idx * 0.10 + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.10 + 1.8);
         
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.start(now + idx * 0.12);
-        osc.stop(now + idx * 0.12 + 2.1);
+        osc.start(now + idx * 0.10);
+        osc.stop(now + idx * 0.10 + 1.85);
       });
     }
   } catch (e) {}
