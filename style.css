@@ -84,20 +84,23 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 20px;
+  padding: 16px;
+  max-width: 440px;
+  width: 92%;
 }
 
-.start-flags-row { font-size: 22px; letter-spacing: 6px; margin-bottom: 12px; }
-.start-title { font-size: 20px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 6px; }
-.start-underline { width: 140px; height: 1px; background: rgba(255, 255, 255, 0.25); margin-bottom: 14px; }
+.start-flags-row { font-size: 22px; letter-spacing: 6px; margin-bottom: 8px; }
+.start-title { font-size: 19px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 4px; }
+.start-underline { width: 140px; height: 1px; background: rgba(255, 255, 255, 0.25); margin-bottom: 12px; }
 
 /* 🔢 রাউন্ড সিলেক্টর স্টাইল */
 .rounds-selector-box {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  width: 100%;
 }
 
 .rounds-label {
@@ -118,7 +121,7 @@ body {
   background: rgba(0, 77, 38, 0.6);
   color: #ffffff;
   border: 1px solid var(--theme-green);
-  padding: 6px 11px;
+  padding: 5px 10px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 800;
@@ -126,10 +129,7 @@ body {
   transition: all 0.2s ease;
 }
 
-.round-btn:hover {
-  background: rgba(0, 255, 102, 0.2);
-}
-
+.round-btn:hover { background: rgba(0, 255, 102, 0.2); }
 .round-btn.active {
   background: var(--theme-yellow);
   color: #000000;
@@ -137,27 +137,107 @@ body {
   box-shadow: 0 0 12px rgba(255, 210, 63, 0.6);
 }
 
+/* 🎵 মিউজিক সেটিংস বক্স */
+.music-settings-box {
+  background: rgba(6, 40, 23, 0.65);
+  border: 1px solid rgba(0, 255, 102, 0.35);
+  border-radius: 12px;
+  padding: 10px 14px;
+  width: 100%;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.music-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--theme-yellow);
+  letter-spacing: 1px;
+}
+
+.bgm-dropdown {
+  background: #091a10;
+  color: #ffffff;
+  border: 1px solid var(--theme-green);
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.custom-music-wrapper {
+  width: 100%;
+  animation: fadeIn 0.3s ease;
+}
+
+.custom-music-input {
+  width: 100%;
+  background: #020810;
+  color: var(--theme-blue);
+  border: 1px dashed var(--theme-blue);
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  outline: none;
+}
+
+.custom-music-input::placeholder {
+  color: rgba(0, 210, 255, 0.45);
+}
+
+.volume-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.vol-icon { font-size: 10px; color: var(--theme-green); white-space: nowrap; }
+
+.volume-slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--theme-yellow);
+  cursor: pointer;
+  height: 4px;
+}
+
+.vol-percent {
+  color: var(--theme-yellow);
+  width: 32px;
+  text-align: right;
+  font-size: 11px;
+}
+
 .fullscreen-option {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
-  font-size: 13px;
+  margin-bottom: 14px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--theme-blue);
   cursor: pointer;
   user-select: none;
 }
 
-.fullscreen-option input { width: 16px; height: 16px; accent-color: var(--theme-yellow); cursor: pointer; }
+.fullscreen-option input { width: 15px; height: 15px; accent-color: var(--theme-yellow); cursor: pointer; }
 
 .start-battle-btn {
   background: #09122b;
   color: #ffd23f;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
   letter-spacing: 1.5px;
-  padding: 16px 32px;
+  padding: 14px 28px;
   border-radius: 12px;
   border: 1.5px solid #ffd23f;
   cursor: pointer;
@@ -175,8 +255,8 @@ body {
   box-shadow: 0 0 25px rgba(255, 210, 63, 0.6);
 }
 
-.play-icon { font-size: 14px; }
-.start-footer-text { margin-top: 18px; font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.4); letter-spacing: 1.2px; }
+.play-icon { font-size: 13px; }
+.start-footer-text { margin-top: 14px; font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, 0.4); letter-spacing: 1.2px; }
 
 .hidden { display: none !important; }
 
