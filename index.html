@@ -20,7 +20,7 @@
     </div>
   </div>
 
-  <!-- Start Battle Screen with Fullscreen & Round Selector -->
+  <!-- Start Battle Screen with Fullscreen, Round Selector & Music Settings -->
   <div id="start-screen" class="overlay-screen hidden">
     <div class="start-box">
       <div class="start-flags-row">🇺🇸 🇧🇷 🇯🇵 🇫🇷 🇰🇷 🇩🇪 🇦🇷</div>
@@ -36,6 +36,30 @@
           <button type="button" class="round-btn active" onclick="setTournamentRounds(60, this)">60</button>
           <button type="button" class="round-btn" onclick="setTournamentRounds(90, this)">90</button>
           <button type="button" class="round-btn" onclick="setTournamentRounds(120, this)">120</button>
+        </div>
+      </div>
+
+      <!-- 🎵 ব্যাকগ্রাউন্ড মিউজিক ও সাউন্ড সেটিংস -->
+      <div class="music-settings-box">
+        <div class="music-label">🎶 BACKGROUND MUSIC:</div>
+        <select id="bgmSelect" class="bgm-dropdown" onchange="handleBgmSelectChange()">
+          <option value="synth">🎵 Procedural Marimba Beat (Default ASMR)</option>
+          <option value="arcade">🕹️ Retro Arcade Battle Beat</option>
+          <option value="cyber">⚡ Neon Cyberpunk Energy</option>
+          <option value="epic">🥁 Epic Tournament March</option>
+          <option value="custom">🔗 Custom GitHub / Direct MP3 Link</option>
+        </select>
+
+        <!-- কাস্টম লিঙ্ক ইনপুট বক্স (GitHub / MP3) -->
+        <div id="customMusicInputWrapper" class="custom-music-wrapper hidden">
+          <input type="text" id="customBgmUrl" class="custom-music-input" placeholder="Paste GitHub raw or direct .mp3 link..." />
+        </div>
+
+        <!-- 🔊 ভলিউম কন্ট্রোল স্লাইডার -->
+        <div class="volume-slider-row">
+          <span class="vol-icon">🔊 VOLUME:</span>
+          <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.7" oninput="changeVolume(this.value)" />
+          <span id="volumeValueText" class="vol-percent">70%</span>
         </div>
       </div>
 
