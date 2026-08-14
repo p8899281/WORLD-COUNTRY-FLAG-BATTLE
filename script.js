@@ -29,7 +29,7 @@ const whiteSpeed = 0.018;
 const yellowSpeed = 0.052; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
-let dpr = 1; // High DPI Scale Factor
+let dpr = 1;
 let isPlaying = false;
 let round = 1;
 
@@ -234,12 +234,10 @@ function startGame(mode) {
   requestAnimationFrame(gameLoop);
 }
 
-// 🎯 ULTRA HD CANVAS RESIZING FIX
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   dpr = window.devicePixelRatio || 1;
   
-  // ক্যানভাসের আসল পিক্সেল সাইজ হাই-ডিপিআই বাড়ানো
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
   
@@ -515,6 +513,22 @@ function gameLoop() {
   ctx.shadowColor = "#00d2ff";
   ctx.stroke();
   ctx.shadowBlur = 0; 
+
+  // 🟡 ৩. গোল্ডেন ইয়োলো হরাইজন্টাল লাইন (Active Flags অনুযায়ী ছোট হতে থাকবে)
+  let flagRatio = activeFlags.length / TOTAL_FLAGS;
+  let maxHalfWidth = arenaR * 0.85; // রিংয়ের ৮৫% ব্যাসার্ধ জুড়ে লাইন
+  let currentHalfWidth = maxHalfWidth * flagRatio;
+
+  ctx.beginPath();
+  ctx.moveTo(arenaX - currentHalfWidth, arenaY);
+  ctx.lineTo(arenaX + currentHalfWidth, arenaY);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#ffd700";
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = "#ffd700";
+  ctx.lineCap = "round";
+  ctx.stroke();
+  ctx.shadowBlur = 0; // শ্যাডো ব্যাকআপ রিসেট
 
   // HD Font Rendering System
   ctx.textAlign = "center";
