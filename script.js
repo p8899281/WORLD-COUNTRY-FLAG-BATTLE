@@ -318,10 +318,6 @@ function eliminate(flag) {
   flag.targetY = viewHeight - 12 - (row * 18);
   flag.settled = false;
 
-  // 🎯 প্রথম থেকেই সোজা নিচে দ্রুত পড়ার জন্য ভেলোসিটি ফিক্স
-  flag.vx = 0;
-  flag.vy = 3;
-
   deadFlags.push(flag); 
   updateUI();
   
@@ -489,19 +485,18 @@ function gameLoop() {
     }
   }
 
-  // 🎯 বাদ পড়া পতাকাগুলোর নিচে নামার স্মুথ গ্র্যাভিটি
+  // 🎯 প্রথম ফ্ল্যাগ থেকেই একদম সোজা ও মসৃণভাবে নিজের লাইনের পজিশনে জমা হওয়ার লজিক (Pure Lerp)
   for (let f of deadFlags) {
       if (!f.settled) {
-          f.vy += 0.5;
-          f.x += (f.targetX - f.x) * 0.15;
-          f.y += f.vy;
-          
-          if (f.y >= f.targetY) {
-              f.y = f.targetY;
+          f.x += (f.targetX - f.x) * 0.18;
+          f.y += (f.targetY - f.y) * 0.18;
+
+          let dx = f.targetX - f.x;
+          let dy = f.targetY - f.y;
+          if (dx * dx + dy * dy < 0.5) {
               f.x = f.targetX;
+              f.y = f.targetY;
               f.settled = true;
-              f.vx = 0;
-              f.vy = 0;
           }
       }
   }
