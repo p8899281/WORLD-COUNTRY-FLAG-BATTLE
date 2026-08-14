@@ -872,7 +872,7 @@ function gameLoop() {
   ctx.clearRect(0, 0, viewWidth, viewHeight);
 
   // -------------------------------------------------------------
-  // ⚡ ১. ওয়ার্ম-আপ ফেজ (রাউন্ড শুরুর ঘোষণা টেক্সট প্রদর্শন)
+  // ⚡ ১. ওয়ার্ম-আপ ফেজ
   // -------------------------------------------------------------
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
@@ -931,27 +931,6 @@ function gameLoop() {
       }
     }
 
-    // 🎯 রিংয়ের মাঝে বড় করে রাউন্ড টেক্সট প্রদর্শন (ব্যাটল শুরু হলে অটো চলে যাবে)
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    let alpha = 1;
-    if (warmupElapsed > 1.8) {
-      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
-    }
-    ctx.globalAlpha = alpha;
-
-    ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.shadowBlur = 18;
-
-    ctx.font = "900 28px system-ui, -apple-system, sans-serif";
-    ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
-    
-    let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
-    ctx.fillText(roundBannerText, arenaX, arenaY);
-    ctx.restore();
-
     if (warmupElapsed >= warmupDuration) {
       isWarmup = false;
       startTime = Date.now();
@@ -998,7 +977,6 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    // ⏱️ নিখুঁত পেসিং ক্যালকুলেটর
     let targetMaxAlive;
     if (elapsed < targetDuration) {
       let p = elapsed / targetDuration;
@@ -1060,7 +1038,6 @@ function gameLoop() {
       f.x += f.vx * (speedMult * 0.28);
       f.y += f.vy * (speedMult * 0.28);
       
-      // 🚀 নির্গমন (Exit) ও দেওয়াল বাউন্স লজিক
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
@@ -1161,6 +1138,44 @@ function gameLoop() {
   ctx.globalAlpha = 1.0;
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
+  }
+
+  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট (সব পতাকার ওপরে ফ্রস্টেড ডার্ক ব্যাজসহ)
+  if (isWarmup) {
+    let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
+    let alpha = 1;
+    if (warmupElapsed > 1.8) {
+      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
+    }
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
+    ctx.font = "900 24px system-ui, -apple-system, sans-serif";
+    let textMetrics = ctx.measureText(roundBannerText);
+    let bgWidth = textMetrics.width + 48;
+    let bgHeight = 46;
+
+    // ব্যাকগ্রাউন্ড ফ্রস্টেড ডার্ক পিল
+    ctx.fillStyle = "rgba(3, 8, 20, 0.90)";
+    ctx.strokeStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.shadowBlur = 16;
+
+    ctx.beginPath();
+    ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
+    ctx.fill();
+    ctx.stroke();
+
+    // ওপরে টেক্সট ড্র
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.fillText(roundBannerText, arenaX, arenaY);
+
+    ctx.restore();
   }
   
   requestAnimationFrame(gameLoop);
