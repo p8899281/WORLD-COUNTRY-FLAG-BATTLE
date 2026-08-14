@@ -370,6 +370,7 @@ const countryList = countryData.map(([code, name]) => [code, name, codeToFlagEmo
 TOTAL_FLAGS = countryList.length;
 
 function selectMode(mode) {
+  document.body.classList.remove('mobile-mode', 'tablet-mode', 'pc-mode');
   document.body.classList.add(mode + '-mode');
   els.modeSelector.classList.add("hidden");
   els.startScreen.classList.remove("hidden");
@@ -403,7 +404,6 @@ function beginBattle() {
   requestAnimationFrame(gameLoop);
 }
 
-// 🎯 রিং বড় করা এবং লিডারবোর্ড ও প্রোগ্রেস লাইনের ঠিক মাঝখানে নিখুঁত কেন্দ্রস্থকরণ
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   viewWidth = rect.width;
@@ -435,14 +435,11 @@ function resizeCanvas() {
   const totalDeadRows = Math.ceil(TOTAL_FLAGS / itemsPerRow);
   const deadFlagsHeight = totalDeadRows * 14 + 8;
 
-  // লিডারবোর্ড (শীর্ষ) এবং প্রোগ্রেস লাইন / মৃত ফ্ল্যাগ জোনের মাঝের উচ্চতা
   const topPadding = 10; 
   const bottomReserved = deadFlagsHeight + 36;
   const usableH = Math.max(180, viewHeight - topPadding - bottomReserved);
 
-  // রিংয়ের সাইজ আগের চেয়ে বড় করা হয়েছে
   arenaR = Math.min((viewWidth - 20) / 2, usableH / 2);
-  // লিডারবোর্ড ও প্রোগ্রেস লাইনের ঠিক মধ্যবিন্দুতে সেট
   arenaY = topPadding + (usableH / 2);
 
   deadFlags.forEach((flag, idx) => {
@@ -605,6 +602,7 @@ function eliminate(flag) {
 
   deadFlags.push(flag); 
   
+  // 🎙️ ফাইনাল রাউন্ডে পোডিয়াম ট্র্যাকিং ও নকআউট বিরতি
   if (isFinalRound) {
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
@@ -751,6 +749,7 @@ function declareWinner(flag) {
     setTimeout(() => {
         els.winnerOverlay.classList.add("hidden");
         
+        // নির্বাচিত রাউন্ড পূর্ণ হলে ফাইনাল রাউন্ডে স্থানান্তর
         if (round >= MAX_QUALIFYING_ROUNDS) {
           isFinalRound = true;
         } else {
@@ -979,14 +978,6 @@ function gameLoop() {
           f1.y -= ny * overlap * 0.45;
           f2.x += nx * overlap * 0.45;
           f2.y += ny * overlap * 0.45;
-          
-          let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
-          if (vrel > 0) {
-            f1.vx -= vrel * 0.95 * nx;
-            f1.vy -= vrel * 0.95 * ny;
-            f2.vx += vrel * 0.95 * nx;
-            f2.vy += vrel * 0.95 * ny;
-          }
         }
       }
     }
