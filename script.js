@@ -410,23 +410,19 @@ function updateLeaderboard() {
     `).join("");
 }
 
-// ⚡ সুপার-ক্লিন বাউন্স ফিজিক্স (দেওয়ালে কখনোই চিপকে থাকবে না)
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  // পতাকাকে দেয়াল থেকে ৩ পিক্সেল ভেতরের দিকে পুশ করা
   f.x = arenaX + nx * (arenaR - f.r - 3);
   f.y = arenaY + ny * (arenaR - f.r - 3);
 
   let dot = (f.vx * nx) + (f.vy * ny);
   
-  // যদি বাইরের দিকে যাচ্ছে বা আটকে থাকে, তাৎক্ষণিক শক্তিশালী রিফ্লেকশন
   if (dot > -2) {
     f.vx -= (dot * 2.15) * nx;
     f.vy -= (dot * 2.15) * ny;
     
-    // কেন্দ্রের দিকে সলিড ইনওয়ার্ড পুশ ও হালকা স্প্রেড
     let tangX = -ny;
     let tangY = nx;
     let scatter = (Math.random() - 0.5) * 3.5;
@@ -466,7 +462,6 @@ function gameLoop() {
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
-    // বল-টু-বল সংঘর্ষ
     const len = activeFlags.length;
     for (let i = 0; i < len; i++) {
       let f1 = activeFlags[i];
@@ -486,14 +481,6 @@ function gameLoop() {
           f1.y -= ny * overlap * 0.5;
           f2.x += nx * overlap * 0.5;
           f2.y += ny * overlap * 0.5;
-          
-          let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
-          if (vrel > 0) {
-            f1.vx -= vrel * nx;
-            f1.vy -= vrel * ny;
-            f2.vx += vrel * nx;
-            f2.vy += vrel * ny;
-          }
         }
       }
     }
@@ -520,7 +507,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (৪৫ সেকেন্ড কাউন্টডাউন)
+  // ⚔️ ২. মূল লড়াই ফেজ (৪০ - ৪৫ সেকেন্ডে নিখুঁত বিজয়ী তৈরি)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -531,19 +518,33 @@ function gameLoop() {
     els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
     els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
 
-    let progress = Math.min(1, elapsed / roundDuration);
+    // 🎯 ৪২.৫ সেকেন্ডকে নিখুঁত ১ উইনার টার্গেট ধরে পেসিং হিসেব
+    let targetTime = 42.5;
+    let progress = Math.min(1, elapsed / targetTime);
 
-    let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.72))));
-    let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
+    // সময়ের সাথে সাথে ১ টিতে নামিয়ে আনার মসৃণ প্রেশার কার্ভ
+    let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * Math.pow(1 - progress, 1.35)));
+    let excessFlags = Math.max(0, activeFlags.length - targetCount);
+    let pressureMult = 1.0 + (excessFlags / 15) * 0.35;
     
-    let speedMult = (2.4 + Math.pow(progress, 1.4) * 4.5) * pressureMult; 
+    let speedMult = (2.2 + Math.pow(progress, 1.3) * 4.2) * pressureMult; 
 
-    let activeGapSize = (timeLeft <= 5 && activeFlags.length > 1) 
-      ? gapSize * (1 + (5 - timeLeft) * 0.45) 
-      : gapSize;
+    // 🎯 ৩৯ থেকে ৪৪ সেকেন্ডের মধ্যে গ্যাপ বৃদ্ধি করে দ্রুত ১টি দেশের ফলাফল নিশ্চিত করা
+    let activeGapSize = gapSize;
+    if (elapsed >= 39 && activeFlags.length > 1) {
+      let endgameProgress = Math.min(1, (elapsed - 39) / 4);
+      activeGapSize = gapSize * (1 + endgameProgress * 1.8);
+    }
     
-    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progress * 0.4));
-    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progress * 0.4));
+    // ৪৪.৫ সেকেন্ডে পৌঁছে গেলে দ্রুত উইনার নির্ধারণ
+    if (elapsed >= 44.2 && activeFlags.length > 1) {
+      while (activeFlags.length > 1) {
+        eliminate(activeFlags[activeFlags.length - 1]);
+      }
+    }
+
+    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progress * 0.45));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progress * 0.45));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -588,9 +589,10 @@ function gameLoop() {
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
       
-      if (dist < arenaR * 0.65) {
-          f.vx += (dx / dist) * 0.22 * pressureMult;
-          f.vy += (dy / dist) * 0.22 * pressureMult;
+      // কেন্দ্র থেকে পরিধির দিকে নিয়মিত মসৃণ ধাক্কা
+      if (dist < arenaR * 0.70) {
+          f.vx += (dx / dist) * 0.28 * pressureMult;
+          f.vy += (dy / dist) * 0.28 * pressureMult;
       }
 
       f.x += f.vx * (speedMult * 0.28);
@@ -669,7 +671,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. লাইনের নিচে সাদা কাউন্ট টেক্সট
+  // 🏷️ ৪. লাইনের নিচে সাদা টেক্সট
   ctx.font = "bold 13px sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
