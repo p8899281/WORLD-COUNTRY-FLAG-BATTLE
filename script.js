@@ -8,6 +8,9 @@ const els = {
   app: document.getElementById("app"),
   mainTitle: document.getElementById("mainTitle"),
   subTitle: document.getElementById("subTitle"),
+  roundLabel: document.getElementById("roundLabel"),
+  roundText: document.getElementById("roundText"),
+  stageLabel: document.getElementById("stageLabel"),
   modeSelector: document.getElementById("mode-selector"),
   startScreen: document.getElementById("start-screen"),
   winnerOverlay: document.getElementById("winnerOverlay"),
@@ -64,14 +67,14 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
-// 🏆 টুর্নামেন্ট ও কাস্টমাইজেবল রাউন্ড স্টেট
+// 🏆 কাস্টমাইজেবল রাউন্ড স্টেট (15, 30, 60, 90, 120)
 let round = 1;
-let MAX_QUALIFYING_ROUNDS = 60; // ডিফল্ট ৬০ রাউন্ড
+let MAX_QUALIFYING_ROUNDS = 60; 
 let isFinalRound = false;
 let podiumPlaces = { first: null, second: null, third: null };
 
 function setTournamentRounds(num, btnElement) {
-  MAX_QUALIFYING_ROUNDS = num;
+  MAX_QUALIFYING_ROUNDS = parseInt(num);
   document.querySelectorAll(".round-btn").forEach(btn => btn.classList.remove("active"));
   if (btnElement) {
     btnElement.classList.add("active");
@@ -386,6 +389,12 @@ function beginBattle() {
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
   
+  // রাউন্ড ও স্টেট সম্পূর্ণ রিসেট
+  round = 1;
+  isFinalRound = false;
+  qualifiedTeams = [];
+  podiumPlaces = { first: null, second: null, third: null };
+
   initGame();
   startLeaderboardAutoCycle();
   updateRoundFooterInfo(0);
@@ -477,14 +486,31 @@ function initGame() {
 
   let currentPool = [];
   if (isFinalRound) {
+    // কোয়ালিফাইড টিম নিয়ে ফাইনাল পুল গঠন (কমপক্ষে ৩টি নিশ্চিত করা)
     currentPool = qualifiedTeams.map(t => [t.code, t.name, t.emoji]);
+    if (currentPool.length < 3) {
+      for (let c of countryList) {
+        if (!currentPool.some(p => p[0] === c[0])) {
+          currentPool.push(c);
+          if (currentPool.length >= 3) break;
+        }
+      }
+    }
+
     TOTAL_FLAGS = currentPool.length;
     els.mainTitle.innerText = "🏆 GRAND FINAL BATTLE 🏆";
-    els.subTitle.innerHTML = `FINAL ROUND ⏱ <span id="timerText">00:45</span> · CHAMPIONSHIP`;
+    els.roundLabel.innerText = "🏆";
+    els.roundText.innerText = "FINAL";
+    els.stageLabel.innerText = "CHAMPIONSHIP";
     els.boardHeading.innerText = "FINALISTS LEADERBOARD";
   } else {
     currentPool = countryList;
     TOTAL_FLAGS = countryList.length;
+    els.mainTitle.innerText = "193-WORLD FLAGS BATTLE";
+    els.roundLabel.innerText = "ROUND";
+    els.roundText.innerText = round;
+    els.stageLabel.innerText = "QUALIFYING";
+    els.boardHeading.innerText = "QUALIFIED FOR FINAL";
   }
 
   for (let i = 0; i < TOTAL_FLAGS; i++) {
@@ -551,7 +577,7 @@ function showKnockoutOverlay(flag) {
       startBGM();
       requestAnimationFrame(gameLoop);
     }
-  }, 2600);
+  }, 2400);
 }
 
 function eliminate(flag) {
@@ -574,6 +600,7 @@ function eliminate(flag) {
 
   deadFlags.push(flag); 
   
+  // 🎙️ ফাইনাল রাউন্ডে পোডিয়াম ট্র্যাকিং ও নকআউট বিরতি
   if (isFinalRound) {
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
@@ -667,8 +694,18 @@ function declareWinner(flag) {
     if (!isPlaying) return;
     isPlaying = false;
     
+    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী (15, 30, 60, 90, 120 সব রাউন্ডেই চলবে)
     if (isFinalRound) {
       podiumPlaces.first = flag;
+
+      // পোডিয়াম ব্যাকফিল যাতে কোনো অবস্থাতেই ১ম, ২য় বা ৩য় ফাঁকা না থাকে
+      if (!podiumPlaces.second && deadFlags.length >= 1) {
+        podiumPlaces.second = deadFlags[deadFlags.length - 1];
+      }
+      if (!podiumPlaces.third && deadFlags.length >= 2) {
+        podiumPlaces.third = deadFlags[deadFlags.length - 2];
+      }
+
       playSound("grand_fanfare");
       speakGrandChampion(flag.name);
 
@@ -692,6 +729,7 @@ function declareWinner(flag) {
       return; 
     }
 
+    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     els.winnerHeading.innerText = "ROUND WINNER";
@@ -709,11 +747,12 @@ function declareWinner(flag) {
     setTimeout(() => {
         els.winnerOverlay.classList.add("hidden");
         
+        // নির্বাচিত রাউন্ড (১৫, ৩০, ৬০, ৯০, ১২০) পূর্ণ হলে ফাইনাল রাউন্ডে স্থানান্তর
         if (round >= MAX_QUALIFYING_ROUNDS) {
           isFinalRound = true;
         } else {
           round++;
-          document.getElementById("roundText").innerText = round;
+          els.roundText.innerText = round;
         }
 
         initGame();
