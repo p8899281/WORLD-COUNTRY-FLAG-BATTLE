@@ -81,9 +81,10 @@ function setTournamentRounds(num, btnElement) {
   }
 }
 
-// 🎉 কনফেটি সেলিব্রেশন সিস্টেম
+// 🎉 কনফেটি ও নকআউট টাইমার হ্যান্ডলার
 let confettiParticles = [];
 let confettiAnimationId = null;
+let knockoutTimeout = null;
 
 let isWarmup = true;
 let warmupStartTime = 0;
@@ -389,7 +390,6 @@ function beginBattle() {
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
   
-  // রাউন্ড ও স্টেট সম্পূর্ণ রিসেট
   round = 1;
   isFinalRound = false;
   qualifiedTeams = [];
@@ -486,7 +486,6 @@ function initGame() {
 
   let currentPool = [];
   if (isFinalRound) {
-    // কোয়ালিফাইড টিম নিয়ে ফাইনাল পুল গঠন (কমপক্ষে ৩টি নিশ্চিত করা)
     currentPool = qualifiedTeams.map(t => [t.code, t.name, t.emoji]);
     if (currentPool.length < 3) {
       for (let c of countryList) {
@@ -551,6 +550,7 @@ function isAngleBetween(target, start, end) {
 function showKnockoutOverlay(flag) {
   isPlaying = false;
   stopBGM();
+  if (knockoutTimeout) clearTimeout(knockoutTimeout);
 
   const pauseStartTime = Date.now();
 
@@ -565,19 +565,20 @@ function showKnockoutOverlay(flag) {
 
   speakKnockout(flag.name);
 
-  setTimeout(() => {
+  knockoutTimeout = setTimeout(() => {
+    if (activeFlags.length === 1) {
+      declareWinner(activeFlags[0]);
+      return;
+    }
+
     els.winnerOverlay.classList.add("hidden");
     const pauseDuration = Date.now() - pauseStartTime;
     startTime += pauseDuration;
 
-    if (activeFlags.length === 1) {
-      declareWinner(activeFlags[0]);
-    } else {
-      isPlaying = true;
-      startBGM();
-      requestAnimationFrame(gameLoop);
-    }
-  }, 2400);
+    isPlaying = true;
+    startBGM();
+    requestAnimationFrame(gameLoop);
+  }, 2200);
 }
 
 function eliminate(flag) {
@@ -608,7 +609,7 @@ function eliminate(flag) {
       podiumPlaces.second = flag;
     }
 
-    if (activeFlags.length < 10) {
+    if (activeFlags.length < 10 && activeFlags.length >= 1) {
       showKnockoutOverlay(flag);
       return;
     }
@@ -691,14 +692,14 @@ function startCelebrationConfetti() {
 }
 
 function declareWinner(flag) {
-    if (!isPlaying) return;
+    if (!isPlaying && !isFinalRound) return;
     isPlaying = false;
+    if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী (15, 30, 60, 90, 120 সব রাউন্ডেই চলবে)
+    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী (15, 30, 60, 90, 120 সব রাউন্ডেই সম্পূর্ণ নিশ্চিত)
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
-      // পোডিয়াম ব্যাকফিল যাতে কোনো অবস্থাতেই ১ম, ২য় বা ৩য় ফাঁকা না থাকে
       if (!podiumPlaces.second && deadFlags.length >= 1) {
         podiumPlaces.second = deadFlags[deadFlags.length - 1];
       }
@@ -747,7 +748,7 @@ function declareWinner(flag) {
     setTimeout(() => {
         els.winnerOverlay.classList.add("hidden");
         
-        // নির্বাচিত রাউন্ড (১৫, ৩০, ৬০, ৯০, ১২০) পূর্ণ হলে ফাইনাল রাউন্ডে স্থানান্তর
+        // নির্বাচিত রাউন্ড পূর্ণ হলে ফাইনাল রাউন্ডে স্থানান্তর
         if (round >= MAX_QUALIFYING_ROUNDS) {
           isFinalRound = true;
         } else {
