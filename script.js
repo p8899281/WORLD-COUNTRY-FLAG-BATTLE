@@ -92,7 +92,7 @@ let warmupStartTime = 0;
 const warmupDuration = 2.5;
 
 let startTime = 0;
-let roundDuration = 45; 
+let roundDuration = 45; // রেগুলার রাউন্ড ৪৫ সেকেন্ড, ফাইনালে ২০০ সেকেন্ড (৩.৩ মিনিট)
 
 let qualifiedTeams = [];
 let leaderboardPage = 0;
@@ -139,7 +139,6 @@ async function requestDeviceFullscreen() {
       await docEl.msRequestFullscreen();
     }
 
-    // স্ক্রিন অরিয়েন্টেশন লকিং (Portrait for Mobile, Landscape for Tablet)
     if (screen.orientation && screen.orientation.lock) {
       if (selectedDeviceMode === 'mobile') {
         screen.orientation.lock('portrait').catch(() => {});
@@ -479,8 +478,8 @@ function updateRoundFooterInfo(currentElapsed = 0) {
   }
 
   if (els.finalCountdownText) {
-    const totalTournamentSecs = MAX_QUALIFYING_ROUNDS * roundDuration; 
-    const elapsedSoFar = ((round - 1) * roundDuration) + currentElapsed;
+    const totalTournamentSecs = MAX_QUALIFYING_ROUNDS * 45; 
+    const elapsedSoFar = ((round - 1) * 45) + currentElapsed;
     const remainingSecs = Math.max(0, totalTournamentSecs - elapsedSoFar);
 
     const totalMins = Math.floor(remainingSecs / 60);
@@ -500,6 +499,9 @@ function initGame() {
 
   let currentPool = [];
   if (isFinalRound) {
+    // ⏱️ ফাইনাল রাউন্ডের সময়সীমা: ২০০ সেকেন্ড (৩ মিনিট ২০ সেকেন্ড = ৩ থেকে ৩.৫ মিনিটের মধ্যে)
+    roundDuration = 200; 
+
     currentPool = qualifiedTeams.map(t => [t.code, t.name, t.emoji]);
     if (currentPool.length < 3) {
       for (let c of countryList) {
@@ -517,6 +519,9 @@ function initGame() {
     els.stageLabel.innerText = "CHAMPIONSHIP";
     els.boardHeading.innerText = "FINALISTS LEADERBOARD";
   } else {
+    // ⏱️ রেগুলার রাউন্ড ৪৫ সেকেন্ড
+    roundDuration = 45;
+
     currentPool = countryList;
     TOTAL_FLAGS = countryList.length;
     els.mainTitle.innerText = "193-WORLD FLAGS BATTLE";
@@ -615,6 +620,7 @@ function eliminate(flag) {
 
   deadFlags.push(flag); 
   
+  // 🎙️ ফাইনাল রাউন্ডে পোডিয়াম ট্র্যাকিং ও নকআউট বিরতি
   if (isFinalRound) {
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
@@ -709,6 +715,7 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
+    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -742,6 +749,7 @@ function declareWinner(flag) {
       return; 
     }
 
+    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     els.winnerHeading.innerText = "ROUND WINNER";
@@ -870,7 +878,9 @@ function gameLoop() {
   // -------------------------------------------------------------
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
-    els.timerText.innerText = `00:45`;
+    let mins = Math.floor(roundDuration / 60);
+    let secs = Math.floor(roundDuration % 60);
+    els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
     updateRoundFooterInfo(0);
 
     ctx.beginPath();
@@ -941,17 +951,22 @@ function gameLoop() {
 
     updateRoundFooterInfo(elapsed);
 
-    let timeRatio = Math.min(1, elapsed / 42.5);
-
-    let outwardPush = 0.35 + Math.pow(timeRatio, 1.2) * 0.65;
-    let speedMult = 2.8 + timeRatio * 2.2;
+    // 🎯 ফাইনাল রাউন্ড (১৮০-২১০ সেকেন্ড) বনাম সাধারণ রাউন্ড (৪০-৪৫ সেকেন্ড) পেসিং
+    let timeRatio = isFinalRound ? Math.min(1, elapsed / 190.0) : Math.min(1, elapsed / 42.0);
+    let outwardPush = 0.25 + Math.pow(timeRatio, 1.4) * 0.85;
+    let speedMult = 2.4 + timeRatio * 2.6;
 
     let activeGapSize = baseGapSize;
-    if (isFinalRound && activeFlags.length <= 10) {
-      activeGapSize = baseGapSize * 0.5;
-    } else if (elapsed >= 34.0) {
-      let lateRatio = Math.min(1, (elapsed - 34.0) / 8.0);
-      activeGapSize = baseGapSize * (1 + lateRatio * 1.1);
+    if (isFinalRound) {
+      if (activeFlags.length <= 10) {
+        activeGapSize = baseGapSize * 0.5; // শেষ ১০ জনে মুখ ছোট হবে
+      } else if (elapsed >= 165.0) {
+        let lateRatio = Math.min(1, (elapsed - 165.0) / 25.0);
+        activeGapSize = baseGapSize * (1 + lateRatio * 1.1);
+      }
+    } else if (elapsed >= 36.0) {
+      let lateRatio = Math.min(1, (elapsed - 36.0) / 6.5);
+      activeGapSize = baseGapSize * (1 + lateRatio * 1.2);
     }
 
     whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.4));
@@ -962,6 +977,24 @@ function gameLoop() {
     
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
+
+    // ⏱️ ৩ থেকে ৩.৫ মিনিটের ফাইনাল রাউন্ড পেসিং কন্ট্রোল
+    let targetMaxAlive;
+    if (isFinalRound) {
+      if (elapsed < 185.0) {
+        let p = elapsed / 185.0;
+        targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.2))));
+      } else {
+        targetMaxAlive = 1; // ১৮৫ থেকে ২০৫ সেকেন্ডের (৩ থেকে ৩.৫ মিনিট) মধ্যে শেষ বিজয়ী হবে
+      }
+    } else {
+      if (elapsed < 41.5) {
+        let p = elapsed / 41.5;
+        targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.15))));
+      } else {
+        targetMaxAlive = 1; // ৪০-৪৫ সেকেন্ডে সাধারণ রাউন্ড শেষ
+      }
+    }
 
     const len = activeFlags.length;
     const minDist = 20;
@@ -987,6 +1020,14 @@ function gameLoop() {
           f1.y -= ny * overlap * 0.45;
           f2.x += nx * overlap * 0.45;
           f2.y += ny * overlap * 0.45;
+          
+          let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
+          if (vrel > 0) {
+            f1.vx -= vrel * 0.95 * nx;
+            f1.vy -= vrel * 0.95 * ny;
+            f2.vx += vrel * 0.95 * nx;
+            f2.vy += vrel * 0.95 * ny;
+          }
         }
       }
     }
@@ -1000,8 +1041,8 @@ function gameLoop() {
       f.vy += (dy / dist) * outwardPush;
 
       let currentV = Math.hypot(f.vx, f.vy);
-      if (currentV > 24.0) {
-        f.vx = (f.vx / currentV) * 24.0;
+      if (currentV > 25.0) {
+        f.vx = (f.vx / currentV) * 25.0;
         f.vy = (f.vy / currentV) * 24.0;
       }
 
@@ -1017,8 +1058,10 @@ function gameLoop() {
             if (inYellow) {
                 bounceFlag(f, dx, dy, dist); 
             } else {
-                if (dist > arenaR + 4) { 
-                  eliminate(f); 
+                if (activeFlags.length > targetMaxAlive && dist > arenaR + 4) {
+                    eliminate(f);
+                } else {
+                    bounceFlag(f, dx, dy, dist);
                 }
             }
         } else {
