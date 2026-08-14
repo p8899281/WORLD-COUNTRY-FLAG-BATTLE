@@ -22,8 +22,8 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const gapSize = Math.PI / 3.4;     // বড় কাটা ফাঁকা জায়গা (~53 degree)
-const yellowSize = Math.PI / 4.2;  // ছোট নীল আর্চ (~43 degree)
+const gapSize = Math.PI / 3.4;     
+const yellowSize = Math.PI / 4.2;  
 
 const whiteSpeed = 0.018; 
 const yellowSpeed = 0.052; 
@@ -35,12 +35,8 @@ let round = 1;
 let startTime = 0;
 let roundDuration = 45; 
 
-// Countries that have actually won a round, with their win counts.
-// This starts empty — nothing goes on the "Qualified for final" board
-// until a round has actually finished.
 let qualifiedTeams = [];
 
-// Web Audio System
 let audioCtx = null;
 let lastSoundTime = 0;
 
@@ -92,7 +88,7 @@ function stopBGM() {
 }
 
 function playSound(type, intensity = 1) {
-  if (!audioCtx || !isPlaying) return;
+  if (!audioCtx) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
   
   const nowTime = Date.now();
@@ -171,18 +167,12 @@ function speakWinner(name) {
   }
 }
 
-// ISO 3166-1 alpha-2 code -> flag emoji (regional indicator symbols), so we
-// never have to hand-type 193 emoji ourselves (and never fall out of sync).
 function codeToFlagEmoji(code) {
   return code.toUpperCase().replace(/./g, ch =>
     String.fromCodePoint(127397 + ch.charCodeAt(0))
   );
 }
 
-// All 193 UN member states, [code, name]. Previously only 27 countries were
-// listed and the rest of the 193 "flags" were random duplicates of those
-// same 27 — this made most of every round a country fighting a copy of
-// itself. Now every flag in the arena is a distinct real country.
 const countryData = [
   ["AF","Afghanistan"],["AL","Albania"],["DZ","Algeria"],["AD","Andorra"],["AO","Angola"],
   ["AG","Antigua and Barbuda"],["AR","Argentina"],["AM","Armenia"],["AU","Australia"],["AT","Austria"],
@@ -226,7 +216,7 @@ const countryData = [
 ];
 
 const countryList = countryData.map(([code, name]) => [code, name, codeToFlagEmoji(code)]);
-TOTAL_FLAGS = countryList.length; // keep in sync with the real list (193)
+TOTAL_FLAGS = countryList.length;
 
 function startGame(mode) {
   unlockAudio();
@@ -250,6 +240,21 @@ function resizeCanvas() {
   arenaX = canvas.width / 2;
   arenaY = canvas.height / 2 - 40;
   arenaR = Math.min(arenaX, arenaY) - 25; 
+
+  const itemWidth = 22;
+  const itemsPerRow = Math.max(10, Math.floor((canvas.width - 20) / itemWidth));
+  const startX = (canvas.width - (itemsPerRow * itemWidth)) / 2 + 11;
+
+  deadFlags.forEach((flag, idx) => {
+    const col = idx % itemsPerRow;
+    const row = Math.floor(idx / itemsPerRow);
+    flag.targetX = startX + col * itemWidth;
+    flag.targetY = canvas.height - 12 - (row * 18);
+    if (flag.settled) {
+      flag.x = flag.targetX;
+      flag.y = flag.targetY;
+    }
+  });
 }
 
 function initGame() {
@@ -264,7 +269,7 @@ function initGame() {
       x: arenaX + (Math.random() - 0.5) * (arenaR * 0.8),
       y: arenaY + (Math.random() - 0.5) * (arenaR * 0.8),
       vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
-      r: 9, active: true, settled: false, targetX: 0, targetY: 0
+      r: 10, active: true, settled: false, targetX: 0, targetY: 0
     };
     flags.push(flagObj);
   }
@@ -333,7 +338,6 @@ function declareWinner(flag) {
     }, 5000);
 }
 
-// 🟡 হলুদ বার আপডেট — active flag এর অনুপাতে বার ছোট হতে থাকবে
 function updateUI() {
   if (els.activeCount && els.progressBar) {
     els.activeCount.innerText = activeFlags.length;
@@ -342,8 +346,6 @@ function updateUI() {
   }
 }
 
-// Called only when a round actually finishes — adds/increments the winner
-// in the qualified list instead of showing fake static entries.
 function recordQualifier(flag) {
   let entry = qualifiedTeams.find(t => t.code === flag.code);
   if (entry) {
@@ -375,7 +377,6 @@ function updateLeaderboard() {
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
-  
   let dot = (f.vx * nx) + (f.vy * ny);
   
   if (dot > 0) {
@@ -403,11 +404,11 @@ function gameLoop() {
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
 
+  let activeGapSize = (timeLeft === 0 && activeFlags.length > 1) ? gapSize * 2.2 : gapSize;
+
   let progress = Math.min(1, elapsed / roundDuration);
-  
   let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.75))));
   let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
-  
   let speedMult = (1.2 + progress * 2.2) * pressureMult; 
   
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
@@ -416,10 +417,30 @@ function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   let gStart = whiteAngle;
-  let gEnd = normalizeAngle(whiteAngle + gapSize);
+  let gEnd = normalizeAngle(whiteAngle + activeGapSize);
   
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
+
+  for (let i = 0; i < activeFlags.length; i++) {
+    for (let j = i + 1; j < activeFlags.length; j++) {
+      let f1 = activeFlags[i];
+      let f2 = activeFlags[j];
+      let dx = f2.x - f1.x;
+      let dy = f2.y - f1.y;
+      let dist = Math.hypot(dx, dy);
+      let minDist = f1.r + f2.r;
+      if (dist < minDist && dist > 0) {
+        let overlap = minDist - dist;
+        let nx = dx / dist;
+        let ny = dy / dist;
+        f1.x -= nx * overlap * 0.15;
+        f1.y -= ny * overlap * 0.15;
+        f2.x += nx * overlap * 0.15;
+        f2.y += ny * overlap * 0.15;
+      }
+    }
+  }
 
   for (let f of [...activeFlags]) {
     let dx = f.x - arenaX;
@@ -436,12 +457,10 @@ function gameLoop() {
     
     if (dist > arenaR - f.r) {
       let fAngle = normalizeAngle(Math.atan2(dy, dx));
-      
       let inGap = isAngleBetween(fAngle, gStart, gEnd);
 
       if (inGap) {
           let inYellow = isAngleBetween(fAngle, yStart, yEnd);
-          
           if (inYellow) {
               bounceFlag(f, dx, dy, dist); 
           } else {
@@ -469,14 +488,14 @@ function gameLoop() {
       }
   }
 
-  // 1. সাদা রিং
+  // ১. সাদা রিং
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
   ctx.lineWidth = 4;
   ctx.strokeStyle = "#ffffff";
   ctx.stroke();
   
-  // 2. 🔵 ছোট নীল নিয়ন আর্চ (Neon Blue Gate)
+  // ২. নীল নিয়ন আর্চ
   ctx.beginPath();
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
@@ -486,7 +505,7 @@ function gameLoop() {
   ctx.stroke();
   ctx.shadowBlur = 0; 
 
-  ctx.font = "16px Arial";
+  ctx.font = "16px 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.globalAlpha = 1.0; 
@@ -494,7 +513,7 @@ function gameLoop() {
       ctx.fillText(f.emoji, f.x, f.y);
   }
 
-  ctx.font = "22px Arial";
+  ctx.font = "22px 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
