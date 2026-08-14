@@ -47,7 +47,7 @@ let viewWidth = 0, viewHeight = 0;
 let dpr = 1;
 let isPlaying = false;
 
-// 📱 SCREEN WAKE LOCK (স্ক্রিন যাতে নিজে থেকে বন্ধ না হয়)
+// 📱 SCREEN WAKE LOCK
 let wakeLock = null;
 
 async function requestWakeLock() {
@@ -64,11 +64,19 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
-// 🏆 টুর্নামেন্ট ও গ্র্যান্ড ফাইনাল স্টেট
+// 🏆 টুর্নামেন্ট ও কাস্টমাইজেবল রাউন্ড স্টেট
 let round = 1;
-const MAX_QUALIFYING_ROUNDS = 60; 
+let MAX_QUALIFYING_ROUNDS = 60; // ডিফল্ট ৬০ রাউন্ড
 let isFinalRound = false;
 let podiumPlaces = { first: null, second: null, third: null };
+
+function setTournamentRounds(num, btnElement) {
+  MAX_QUALIFYING_ROUNDS = num;
+  document.querySelectorAll(".round-btn").forEach(btn => btn.classList.remove("active"));
+  if (btnElement) {
+    btnElement.classList.add("active");
+  }
+}
 
 // 🎉 কনফেটি সেলিব্রেশন সিস্টেম
 let confettiParticles = [];
@@ -365,7 +373,7 @@ function selectMode(mode) {
 
 function beginBattle() {
   unlockAudio();
-  requestWakeLock(); // 📱 স্ক্রিন অন রাখা নিশ্চিত করা
+  requestWakeLock();
 
   const fsToggle = document.getElementById("fullscreenToggle");
   if (fsToggle && fsToggle.checked) {
@@ -514,6 +522,38 @@ function isAngleBetween(target, start, end) {
   return target >= start || target <= end;
 }
 
+function showKnockoutOverlay(flag) {
+  isPlaying = false;
+  stopBGM();
+
+  const pauseStartTime = Date.now();
+
+  els.winnerOverlay.classList.remove("hidden");
+  els.winnerHeading.innerText = "❌ FINALLY KNOCKED OUT ❌";
+  els.winnerHeading.style.color = "#ff4444";
+  els.winnerFlagBox.classList.remove("hidden");
+  els.winnerFlagBox.innerText = flag.emoji;
+  els.winnerName.classList.remove("hidden");
+  els.winnerName.innerText = flag.name;
+  els.podiumContainer.classList.add("hidden");
+
+  speakKnockout(flag.name);
+
+  setTimeout(() => {
+    els.winnerOverlay.classList.add("hidden");
+    const pauseDuration = Date.now() - pauseStartTime;
+    startTime += pauseDuration;
+
+    if (activeFlags.length === 1) {
+      declareWinner(activeFlags[0]);
+    } else {
+      isPlaying = true;
+      startBGM();
+      requestAnimationFrame(gameLoop);
+    }
+  }, 2600);
+}
+
 function eliminate(flag) {
   if (!flag.active) return;
   flag.active = false;
@@ -535,13 +575,15 @@ function eliminate(flag) {
   deadFlags.push(flag); 
   
   if (isFinalRound) {
-    if (activeFlags.length < 10) {
-      speakKnockout(flag.name);
-    }
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
     } else if (activeFlags.length === 1) {
       podiumPlaces.second = flag;
+    }
+
+    if (activeFlags.length < 10) {
+      showKnockoutOverlay(flag);
+      return;
     }
   }
 
@@ -631,6 +673,7 @@ function declareWinner(flag) {
       speakGrandChampion(flag.name);
 
       els.winnerHeading.innerText = "👑 TOURNAMENT CHAMPION 👑";
+      els.winnerHeading.style.color = "#ffd23f";
       els.winnerFlagBox.classList.add("hidden");
       els.winnerName.classList.add("hidden");
       els.podiumContainer.classList.remove("hidden");
@@ -652,6 +695,7 @@ function declareWinner(flag) {
     playSound("win");
     speakWinner(flag.name, round);
     els.winnerHeading.innerText = "ROUND WINNER";
+    els.winnerHeading.style.color = "#ffd23f";
     els.winnerFlagBox.classList.remove("hidden");
     els.winnerName.classList.remove("hidden");
     els.podiumContainer.classList.add("hidden");
