@@ -24,8 +24,8 @@ let yellowAngle = 0;
 const gapSize = Math.PI / 3.4;     
 const yellowSize = Math.PI / 4.2;  
 
-const whiteSpeed = 0.018; 
-const yellowSpeed = 0.052; 
+const whiteSpeed = 0.024; 
+const yellowSpeed = 0.065; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
@@ -107,13 +107,13 @@ function playSound(type, intensity = 1) {
 
   try {
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 35) return;
+      if (nowTime - lastSoundTime < 25) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const basePitch = 230 + Math.random() * 40 + Math.min(intensity, 3) * 15;
+      const basePitch = 240 + Math.random() * 50 + Math.min(intensity, 3) * 15;
       osc.type = "sine";
       
       osc.frequency.setValueAtTime(basePitch, audioCtx.currentTime);
@@ -289,6 +289,7 @@ function resizeCanvas() {
   });
 }
 
+// 🎯 রিংয়ের ভেতরে সম্পূর্ণ গোল আকারে সমানভাবে ছড়িয়ে শুরু হওয়ার লজিক
 function initGame() {
   flags = [];
   deadFlags = [];
@@ -296,15 +297,20 @@ function initGame() {
   
   for (let i = 0; i < TOTAL_FLAGS; i++) {
     let country = countryList[i];
-    let angle = Math.random() * Math.PI * 2;
-    let initialSpeed = 3.2 + Math.random() * 2.2; // প্রাণবন্ত শুরু
+    
+    // পোলার কোঅর্ডিনেটে গোল ডিস্কের ভেতর সুষমভাবে সাজানো
+    let spawnAngle = Math.random() * Math.PI * 2;
+    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.82);
+    
+    let moveAngle = Math.random() * Math.PI * 2;
+    let speed = 9 + Math.random() * 6; // ⚡ ৫ গুণ দ্রুত প্রারম্ভিক স্পিড
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
-      x: arenaX + (Math.random() - 0.5) * (arenaR * 0.75),
-      y: arenaY + (Math.random() - 0.5) * (arenaR * 0.75),
-      vx: Math.cos(angle) * initialSpeed,
-      vy: Math.sin(angle) * initialSpeed,
+      x: arenaX + Math.cos(spawnAngle) * spawnDist,
+      y: arenaY + Math.sin(spawnAngle) * spawnDist,
+      vx: Math.cos(moveAngle) * speed,
+      vy: Math.sin(moveAngle) * speed,
       r: 10, active: true, settled: false, targetX: 0, targetY: 0
     };
     flags.push(flagObj);
@@ -400,23 +406,29 @@ function updateLeaderboard() {
     `).join("");
 }
 
-// ⚡ পারফেক্ট স্থিতিস্থাপক বাউন্স (Elastic & Crisp Ring Bounce)
+// ⚡ সুপার ফাস্ট এবং হাই-এনার্জি রিং বাউন্স
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   let dot = (f.vx * nx) + (f.vy * ny);
   
   if (dot > 0) {
-    // দেওয়ালের ভেতর অবস্থান স্থির রাখা
     f.x = arenaX + nx * (arenaR - f.r);
     f.y = arenaY + ny * (arenaR - f.r);
     
-    // নিখুঁত বাউন্স রিফ্লেকশন এবং সামান্য ডাইনামিক স্প্রেড
-    f.vx -= 1.96 * dot * nx + (Math.random() - 0.5) * 0.3;
-    f.vy -= 1.96 * dot * ny + (Math.random() - 0.5) * 0.3;
+    f.vx -= 2.05 * dot * nx;
+    f.vy -= 2.05 * dot * ny;
     
+    // গতি নিশ্চিত রাখা
+    let curSpeed = Math.hypot(f.vx, f.vy);
+    if (curSpeed < 8) {
+      let scale = 8 / (curSpeed || 1);
+      f.vx *= scale;
+      f.vy *= scale;
+    }
+
     const speed = Math.abs(dot);
-    if (speed > 0.6) {
+    if (speed > 0.5) {
       playSound("bounce", speed);
     }
   }
@@ -435,15 +447,12 @@ function gameLoop() {
 
   let progress = Math.min(1, elapsed / roundDuration);
 
-  // সময়ের সাথে সাথে নিখুঁতভাবে ১টি উইনারে নামিয়ে আনার প্রেশার লজিক
   let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.72))));
   let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
   
-  // শুরুতে গতি স্বাভাবিক (1.35x) থেকে শুরু হয়ে সময়ের সাথে দ্রুত (3.8x+) হবে
-  let baseSpeed = 1.35 + Math.pow(progress, 1.5) * 2.8; 
-  let speedMult = baseSpeed * pressureMult; 
+  // ⚡ ৫ গুণ তীব্র গতি
+  let speedMult = (2.6 + Math.pow(progress, 1.4) * 4.8) * pressureMult; 
 
-  // শেষ ৫ সেকেন্ডে দ্রুত উইনার নির্ধারণ
   let activeGapSize = (timeLeft <= 5 && activeFlags.length > 1) 
     ? gapSize * (1 + (5 - timeLeft) * 0.45) 
     : gapSize;
@@ -459,7 +468,7 @@ function gameLoop() {
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-  // ⚡ ফ্ল্যাগগুলোর নিজেদের মধ্যে মসৃণ কলিশন ও বাউন্স
+  // ফ্ল্যাগ টু ফ্ল্যাগ কলিশন
   const len = activeFlags.length;
   for (let i = 0; i < len; i++) {
     let f1 = activeFlags[i];
@@ -469,22 +478,24 @@ function gameLoop() {
       let dy = f2.y - f1.y;
       let distSq = dx * dx + dy * dy;
       let minDist = f1.r + f2.r;
-      if (distSq < minDist * minDist && distSq > 0.001) {
+      if (distSq < minDist * minDist && distSq > 0.0001) {
         let dist = Math.sqrt(distSq);
         let overlap = minDist - dist;
         let nx = dx / dist;
         let ny = dy / dist;
         
-        f1.x -= nx * overlap * 0.25;
-        f1.y -= ny * overlap * 0.25;
-        f2.x += nx * overlap * 0.25;
-        f2.y += ny * overlap * 0.25;
+        f1.x -= nx * overlap * 0.3;
+        f1.y -= ny * overlap * 0.3;
+        f2.x += nx * overlap * 0.3;
+        f2.y += ny * overlap * 0.3;
         
-        let p = (f1.vx * nx + f1.vy * ny - (f2.vx * nx + f2.vy * ny)) * 0.18;
-        f1.vx -= p * nx;
-        f1.vy -= p * ny;
-        f2.vx += p * nx;
-        f2.vy += p * ny;
+        let p = (f1.vx * nx + f1.vy * ny - (f2.vx * nx + f2.vy * ny));
+        if (p < 0) {
+          f1.vx -= p * nx;
+          f1.vy -= p * ny;
+          f2.vx += p * nx;
+          f2.vy += p * ny;
+        }
       }
     }
   }
@@ -494,14 +505,13 @@ function gameLoop() {
     let dy = f.y - arenaY;
     let dist = Math.hypot(dx, dy) || 1;
     
-    // বাইরের দিকে প্রাকৃতিক ড্রাফট
     if (dist < arenaR * 0.65) {
-        f.vx += (dx / dist) * 0.18 * pressureMult;
-        f.vy += (dy / dist) * 0.18 * pressureMult;
+        f.vx += (dx / dist) * 0.25 * pressureMult;
+        f.vy += (dy / dist) * 0.25 * pressureMult;
     }
 
-    f.x += f.vx * (speedMult * 0.38);
-    f.y += f.vy * (speedMult * 0.38);
+    f.x += f.vx * (speedMult * 0.28);
+    f.y += f.vy * (speedMult * 0.28);
     
     if (dist > arenaR - f.r) {
       let fAngle = normalizeAngle(Math.atan2(dy, dx));
@@ -520,7 +530,6 @@ function gameLoop() {
     }
   }
 
-  // এলিমিনেটেড ফ্ল্যাগ সোজা লাইনে জমা হওয়া
   for (let f of deadFlags) {
       if (!f.settled) {
           f.x += (f.targetX - f.x) * 0.18;
