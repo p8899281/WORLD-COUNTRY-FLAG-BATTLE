@@ -24,8 +24,8 @@ let yellowAngle = 0;
 const gapSize = Math.PI / 3.4;     
 const yellowSize = Math.PI / 4.2;  
 
-const whiteSpeed = 0.024; 
-const yellowSpeed = 0.065; 
+const whiteSpeed = 0.020; 
+const yellowSpeed = 0.055; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
@@ -111,13 +111,13 @@ function playSound(type, intensity = 1) {
 
   try {
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 25) return;
+      if (nowTime - lastSoundTime < 30) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const basePitch = 240 + Math.random() * 50 + Math.min(intensity, 3) * 15;
+      const basePitch = 230 + Math.random() * 40 + Math.min(intensity, 3) * 15;
       osc.type = "sine";
       
       osc.frequency.setValueAtTime(basePitch, audioCtx.currentTime);
@@ -307,7 +307,7 @@ function initGame() {
     let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.60);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 9 + Math.random() * 5;
+    let speed = 4.0 + Math.random() * 2.2; // 🎯 পরিষ্কার ও স্পষ্ট পর্যবেক্ষণযোগ্য প্রারম্ভিক স্পিড
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -410,35 +410,29 @@ function updateLeaderboard() {
     `).join("");
 }
 
+// ⚡ নির্ভুল বাউন্স ফিজিক্স (দেয়াল থেকে ভেতরে রিবাউন্ড)
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  f.x = arenaX + nx * (arenaR - f.r - 3);
-  f.y = arenaY + ny * (arenaR - f.r - 3);
+  f.x = arenaX + nx * (arenaR - f.r - 2);
+  f.y = arenaY + ny * (arenaR - f.r - 2);
 
   let dot = (f.vx * nx) + (f.vy * ny);
-  
-  if (dot > -2) {
-    f.vx -= (dot * 2.15) * nx;
-    f.vy -= (dot * 2.15) * ny;
+  if (dot > 0) {
+    f.vx -= 1.95 * dot * nx;
+    f.vy -= 1.95 * dot * ny;
     
     let tangX = -ny;
     let tangY = nx;
-    let scatter = (Math.random() - 0.5) * 3.5;
-
-    f.vx += (-nx * 3.5) + (tangX * scatter);
-    f.vy += (-ny * 3.5) + (tangY * scatter);
+    let scatter = (Math.random() - 0.5) * 1.2;
+    f.vx += tangX * scatter;
+    f.vy += tangY * scatter;
     
-    let curSpeed = Math.hypot(f.vx, f.vy);
-    if (curSpeed < 9) {
-      let scale = (9 + Math.random() * 3) / (curSpeed || 1);
-      f.vx *= scale;
-      f.vy *= scale;
+    const speed = Math.abs(dot);
+    if (speed > 0.4) {
+      playSound("bounce", speed);
     }
-
-    const speed = Math.abs(dot) + 1;
-    playSound("bounce", speed);
   }
 }
 
@@ -477,20 +471,20 @@ function gameLoop() {
           let nx = dx / dist;
           let ny = dy / dist;
           
-          f1.x -= nx * overlap * 0.5;
-          f1.y -= ny * overlap * 0.5;
-          f2.x += nx * overlap * 0.5;
-          f2.y += ny * overlap * 0.5;
+          f1.x -= nx * overlap * 0.4;
+          f1.y -= ny * overlap * 0.4;
+          f2.x += nx * overlap * 0.4;
+          f2.y += ny * overlap * 0.4;
         }
       }
     }
 
     for (let f of activeFlags) {
-      let jitterX = (Math.random() - 0.5) * 3;
-      let jitterY = (Math.random() - 0.5) * 3;
+      let jitterX = (Math.random() - 0.5) * 2;
+      let jitterY = (Math.random() - 0.5) * 2;
 
-      f.x += f.vx * 0.35 + jitterX;
-      f.y += f.vy * 0.35 + jitterY;
+      f.x += f.vx * 0.5 + jitterX;
+      f.y += f.vy * 0.5 + jitterY;
 
       let dx = f.x - arenaX;
       let dy = f.y - arenaY;
@@ -507,7 +501,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (ঠিক ৪০ - ৪৫ সেকেন্ডে উইনার নির্ধারণ)
+  // ⚔️ ২. মূল লড়াই ফেজ (ধীর গতিতে বৃদ্ধি পেয়ে ৪০ - ৪৫ সেকেন্ডে উইনার নির্ধারণ)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -518,41 +512,38 @@ function gameLoop() {
     els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
     els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
 
-    // 🎯 ৪০ সেকেন্ডের আগে যেন কিছুতেই উইনার না হয় তার জন্য ন্যূনতম ফ্ল্যাগ সীমা
+    // 🎯 মসৃণ টাইম পেসিং কোটা (৪০ সেকেন্ডের আগে কিছুতেই ১ জনে নেমে যাবে না)
     let minAllowedFlags = 1;
     if (elapsed < 38) {
-      minAllowedFlags = Math.max(8, Math.floor(TOTAL_FLAGS * Math.pow(1 - (elapsed / 42), 1.25)));
+      minAllowedFlags = Math.max(6, Math.floor(TOTAL_FLAGS * Math.pow(1 - (elapsed / 42.5), 1.25)));
     } else if (elapsed < 40.5) {
       minAllowedFlags = 3;
-    } else if (elapsed < 42.0) {
+    } else if (elapsed < 42.5) {
       minAllowedFlags = 2;
     } else {
       minAllowedFlags = 1;
     }
 
-    // 🎯 সঠিক গতি নিয়ন্ত্রণ
-    let targetPacedCount = Math.max(1, Math.floor(TOTAL_FLAGS * Math.pow(Math.max(0, 1 - (elapsed / 42.5)), 1.15)));
-    let excessFlags = Math.max(0, activeFlags.length - targetPacedCount);
-    let pressureMult = 1.0 + (excessFlags / 12) * 0.35;
-    
-    let speedMult = (2.2 + Math.pow(Math.min(1, elapsed / 42.5), 1.2) * 3.8) * pressureMult; 
+    // 🎯 অতিরিক্ত গতি পরিহার করে স্বাভাবিক ও ধীরগতির গতিবৃদ্ধি (1.0x -> 1.7x max)
+    let progress = Math.min(1, elapsed / 42.5);
+    let speedMult = 1.0 + progress * 0.75; 
 
-    // ৪০ সেকেন্ডের পর দরজা বড় হবে যেন দ্রুত অবশিষ্ট পতাকা বের হতে পারে
+    // ৪০ সেকেন্ডের পর খোলা দরজা ধীরে বড় হবে যাতে শেষ ফ্ল্যাগগুলো বের হতে পারে
     let activeGapSize = gapSize;
-    if (elapsed >= 40.0 && activeFlags.length > 1) {
-      let finalPush = Math.min(1, (elapsed - 40.0) / 3.0);
-      activeGapSize = gapSize * (1 + finalPush * 2.2);
+    if (elapsed >= 39.5 && activeFlags.length > 1) {
+      let finalPush = Math.min(1, (elapsed - 39.5) / 3.5);
+      activeGapSize = gapSize * (1 + finalPush * 1.6);
     }
     
-    // ৪৩.৮ সেকেন্ডে পৌঁছে গেলে শেষ ১ জনকে রেখে ফলাফল নিশ্চিত করা
-    if (elapsed >= 43.8 && activeFlags.length > 1) {
+    // ৪৩.৫ সেকেন্ডে পৌঁছে গেলে ফলাফল নিশ্চিত করা
+    if (elapsed >= 43.5 && activeFlags.length > 1) {
       while (activeFlags.length > 1) {
         eliminate(activeFlags[activeFlags.length - 1]);
       }
     }
 
-    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + (elapsed / 45) * 0.45));
-    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + (elapsed / 45) * 0.45));
+    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progress * 0.3));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progress * 0.3));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -576,17 +567,17 @@ function gameLoop() {
           let nx = dx / dist;
           let ny = dy / dist;
           
-          f1.x -= nx * overlap * 0.5;
-          f1.y -= ny * overlap * 0.5;
-          f2.x += nx * overlap * 0.5;
-          f2.y += ny * overlap * 0.5;
+          f1.x -= nx * overlap * 0.4;
+          f1.y -= ny * overlap * 0.4;
+          f2.x += nx * overlap * 0.4;
+          f2.y += ny * overlap * 0.4;
           
           let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
           if (vrel > 0) {
-            f1.vx -= vrel * nx;
-            f1.vy -= vrel * ny;
-            f2.vx += vrel * nx;
-            f2.vy += vrel * ny;
+            f1.vx -= vrel * 0.85 * nx;
+            f1.vy -= vrel * 0.85 * ny;
+            f2.vx += vrel * 0.85 * nx;
+            f2.vy += vrel * 0.85 * ny;
           }
         }
       }
@@ -597,19 +588,26 @@ function gameLoop() {
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
       
-      if (dist < arenaR * 0.70) {
-          f.vx += (dx / dist) * 0.25 * pressureMult;
-          f.vy += (dy / dist) * 0.25 * pressureMult;
+      // কেন্দ্র থেকে পরিধির দিকে নিয়মিত মসৃণ টান
+      if (dist < arenaR * 0.65) {
+          f.vx += (dx / dist) * 0.08;
+          f.vy += (dy / dist) * 0.08;
       }
 
-      f.x += f.vx * (speedMult * 0.28);
-      f.y += f.vy * (speedMult * 0.28);
+      // গতি ক্যাপ রাখা যাতে কোনো অবস্থাতেই দেয়াল ভেদ না করে
+      let currentV = Math.hypot(f.vx, f.vy);
+      if (currentV > 7.5) {
+        f.vx = (f.vx / currentV) * 7.5;
+        f.vy = (f.vy / currentV) * 7.5;
+      }
+
+      f.x += f.vx * speedMult * 0.65;
+      f.y += f.vy * speedMult * 0.65;
       
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
 
-        // 🎯 সময়ের আগে যাতে বেশি পতাকা আউট না হয়, সেজন্য সেফটি বাউন্স
         if (inGap) {
             let inYellow = isAngleBetween(fAngle, yStart, yEnd);
             if (inYellow || activeFlags.length <= minAllowedFlags) {
