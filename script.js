@@ -2,7 +2,7 @@ const canvas = document.getElementById("arena");
 const ctx = canvas.getContext("2d");
 
 const confettiCanvas = document.getElementById("confettiCanvas");
-const confettiCtx = confettiCanvas.getContext("2d");
+const confettiCtx = confettiCanvas ? confettiCanvas.getContext("2d") : null;
 
 const els = {
   app: document.getElementById("app"),
@@ -80,7 +80,7 @@ let isFinalRound = false;
 let podiumPlaces = { first: null, second: null, third: null };
 
 function setTournamentRounds(num, btnElement) {
-  MAX_QUALIFYING_ROUNDS = parseInt(num);
+  MAX_QUALIFYING_ROUNDS = parseInt(num) || 60;
   document.querySelectorAll(".round-btn").forEach(btn => btn.classList.remove("active"));
   if (btnElement) {
     btnElement.classList.add("active");
@@ -92,7 +92,6 @@ let audioCtx = null;
 let lastSoundTime = 0;
 let masterVolume = 0.7;
 
-// ডিফল্ট অনলাইন মিউজিক ট্র্যাক
 const defaultTracks = {
   arcade: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3',
   cyber: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
@@ -101,9 +100,7 @@ const defaultTracks = {
 
 const customAudioPlayer = new Audio();
 customAudioPlayer.loop = true;
-let isAudioPlaying = false;
 
-// GitHub URL কনভার্টার (blob লিঙ্ক দিলে স্বয়ংক্রিয়ভাবে raw.githubusercontent-এ পরিবর্তন করবে)
 function formatDirectUrl(url) {
   if (!url) return '';
   let cleanUrl = url.trim();
@@ -114,18 +111,22 @@ function formatDirectUrl(url) {
 }
 
 function handleBgmSelectChange() {
-  const selected = els.bgmSelect.value;
-  if (selected === 'custom') {
-    els.customMusicInputWrapper.classList.remove('hidden');
-  } else {
-    els.customMusicInputWrapper.classList.add('hidden');
+  const selected = els.bgmSelect ? els.bgmSelect.value : 'synth';
+  if (els.customMusicInputWrapper) {
+    if (selected === 'custom') {
+      els.customMusicInputWrapper.classList.remove('hidden');
+    } else {
+      els.customMusicInputWrapper.classList.add('hidden');
+    }
   }
 }
 
 function changeVolume(val) {
-  masterVolume = parseFloat(val);
+  masterVolume = parseFloat(val) || 0.7;
   customAudioPlayer.volume = masterVolume;
-  els.volumeValueText.innerText = `${Math.round(masterVolume * 100)}%`;
+  if (els.volumeValueText) {
+    els.volumeValueText.innerText = `${Math.round(masterVolume * 100)}%`;
+  }
 }
 
 let bgmInterval = null;
@@ -138,12 +139,14 @@ const marimbaNotes = [
 const bassRoots = [261.63, 261.63, 220.00, 220.00, 174.61, 174.61, 196.00, 196.00];
 
 function unlockAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } catch (e) {}
 }
 
 async function requestDeviceFullscreen() {
@@ -169,10 +172,9 @@ async function requestDeviceFullscreen() {
 
 function startBGM() {
   stopBGM();
-  const selectedType = els.bgmSelect.value;
+  const selectedType = els.bgmSelect ? els.bgmSelect.value : 'synth';
 
   if (selectedType === 'synth') {
-    // সিন্থেসাইজার বিট চলবে
     bgmStep = 0;
     bgmInterval = setInterval(() => {
       if (!audioCtx || !isPlaying) return;
@@ -215,9 +217,8 @@ function startBGM() {
       } catch (e) {}
     }, 135);
   } else {
-    // অডিও লিঙ্ক প্লেয়ার
     let targetSrc = '';
-    if (selectedType === 'custom') {
+    if (selectedType === 'custom' && els.customBgmUrl) {
       targetSrc = formatDirectUrl(els.customBgmUrl.value);
     } else if (defaultTracks[selectedType]) {
       targetSrc = defaultTracks[selectedType];
@@ -235,7 +236,9 @@ function startBGM() {
 }
 
 function stopBGM() {
-  customAudioPlayer.pause();
+  try {
+    customAudioPlayer.pause();
+  } catch (e) {}
   if (bgmInterval) {
     clearInterval(bgmInterval);
     bgmInterval = null;
@@ -244,7 +247,7 @@ function stopBGM() {
 
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   
   const nowTime = Date.now();
 
@@ -334,13 +337,15 @@ function playSound(type, intensity = 1) {
 
 function speakText(text) {
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.0;
-    utterance.volume = masterVolume;
-    utterance.lang = "en-US";
-    window.speechSynthesis.speak(utterance);
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      utterance.volume = masterVolume;
+      utterance.lang = "en-US";
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {}
   }
 }
 
@@ -415,8 +420,8 @@ function selectMode(mode) {
   selectedDeviceMode = mode;
   document.body.classList.remove('mobile-mode', 'tablet-mode', 'pc-mode');
   document.body.classList.add(mode + '-mode');
-  els.modeSelector.classList.add("hidden");
-  els.startScreen.classList.remove("hidden");
+  if (els.modeSelector) els.modeSelector.classList.add("hidden");
+  if (els.startScreen) els.startScreen.classList.remove("hidden");
 }
 
 function beginBattle() {
@@ -428,8 +433,8 @@ function beginBattle() {
     requestDeviceFullscreen();
   }
 
-  els.startScreen.classList.add("hidden");
-  els.app.classList.remove("hidden");
+  if (els.startScreen) els.startScreen.classList.add("hidden");
+  if (els.app) els.app.classList.remove("hidden");
   
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
@@ -442,6 +447,7 @@ function beginBattle() {
   initGame();
   startLeaderboardAutoCycle();
   updateRoundFooterInfo(0);
+  
   isPlaying = true;
   startBGM(); 
   requestAnimationFrame(gameLoop);
@@ -457,14 +463,18 @@ function resizeCanvas() {
   canvas.width = Math.floor(viewWidth * dpr);
   canvas.height = Math.floor(viewHeight * dpr);
   
-  confettiCanvas.width = Math.floor(viewWidth * dpr);
-  confettiCanvas.height = Math.floor(viewHeight * dpr);
+  if (confettiCanvas) {
+    confettiCanvas.width = Math.floor(viewWidth * dpr);
+    confettiCanvas.height = Math.floor(viewHeight * dpr);
+  }
   
   ctx.resetTransform();
   ctx.scale(dpr, dpr);
 
-  confettiCtx.resetTransform();
-  confettiCtx.scale(dpr, dpr);
+  if (confettiCtx) {
+    confettiCtx.resetTransform();
+    confettiCtx.scale(dpr, dpr);
+  }
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -530,7 +540,7 @@ function initGame() {
 
   let currentPool = [];
   if (isFinalRound) {
-    roundDuration = 200; // ৩ মিনিট ২০ সেকেন্ড
+    roundDuration = 200; 
 
     currentPool = qualifiedTeams.map(t => [t.code, t.name, t.emoji]);
     if (currentPool.length < 3) {
@@ -543,21 +553,21 @@ function initGame() {
     }
 
     TOTAL_FLAGS = currentPool.length;
-    els.mainTitle.innerText = "🏆 GRAND FINAL BATTLE 🏆";
-    els.roundLabel.innerText = "🏆";
-    els.roundText.innerText = "FINAL";
-    els.stageLabel.innerText = "CHAMPIONSHIP";
-    els.boardHeading.innerText = "FINALISTS LEADERBOARD";
+    if (els.mainTitle) els.mainTitle.innerText = "🏆 GRAND FINAL BATTLE 🏆";
+    if (els.roundLabel) els.roundLabel.innerText = "🏆";
+    if (els.roundText) els.roundText.innerText = "FINAL";
+    if (els.stageLabel) els.stageLabel.innerText = "CHAMPIONSHIP";
+    if (els.boardHeading) els.boardHeading.innerText = "FINALISTS LEADERBOARD";
   } else {
-    roundDuration = 45; // সাধারণ রাউন্ড ৪৫ সেকেন্ড
+    roundDuration = 45;
 
     currentPool = countryList;
     TOTAL_FLAGS = countryList.length;
-    els.mainTitle.innerText = "193-WORLD FLAGS BATTLE";
-    els.roundLabel.innerText = "ROUND";
-    els.roundText.innerText = round;
-    els.stageLabel.innerText = "QUALIFYING";
-    els.boardHeading.innerText = "QUALIFIED FOR FINAL";
+    if (els.mainTitle) els.mainTitle.innerText = "193-WORLD FLAGS BATTLE";
+    if (els.roundLabel) els.roundLabel.innerText = "ROUND";
+    if (els.roundText) els.roundText.innerText = round;
+    if (els.stageLabel) els.stageLabel.innerText = "QUALIFYING";
+    if (els.boardHeading) els.boardHeading.innerText = "QUALIFIED FOR FINAL";
   }
 
   for (let i = 0; i < TOTAL_FLAGS; i++) {
@@ -595,6 +605,8 @@ function isAngleBetween(target, start, end) {
   return target >= start || target <= end;
 }
 
+let knockoutTimeout = null;
+
 function showKnockoutOverlay(flag) {
   isPlaying = false;
   stopBGM();
@@ -602,14 +614,20 @@ function showKnockoutOverlay(flag) {
 
   const pauseStartTime = Date.now();
 
-  els.winnerOverlay.classList.remove("hidden");
-  els.winnerHeading.innerText = "❌ FINALLY KNOCKED OUT ❌";
-  els.winnerHeading.style.color = "#ff4444";
-  els.winnerFlagBox.classList.remove("hidden");
-  els.winnerFlagBox.innerText = flag.emoji;
-  els.winnerName.classList.remove("hidden");
-  els.winnerName.innerText = flag.name;
-  els.podiumContainer.classList.add("hidden");
+  if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
+  if (els.winnerHeading) {
+    els.winnerHeading.innerText = "❌ FINALLY KNOCKED OUT ❌";
+    els.winnerHeading.style.color = "#ff4444";
+  }
+  if (els.winnerFlagBox) {
+    els.winnerFlagBox.classList.remove("hidden");
+    els.winnerFlagBox.innerText = flag.emoji;
+  }
+  if (els.winnerName) {
+    els.winnerName.classList.remove("hidden");
+    els.winnerName.innerText = flag.name;
+  }
+  if (els.podiumContainer) els.podiumContainer.classList.add("hidden");
 
   speakKnockout(flag.name);
 
@@ -619,7 +637,7 @@ function showKnockoutOverlay(flag) {
       return;
     }
 
-    els.winnerOverlay.classList.add("hidden");
+    if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
     const pauseDuration = Date.now() - pauseStartTime;
     startTime += pauseDuration;
 
@@ -668,6 +686,7 @@ function eliminate(flag) {
 }
 
 function startCelebrationConfetti() {
+  if (!confettiCtx) return;
   confettiParticles = [];
   const colors = ["#ffd700", "#ff0055", "#00ff66", "#00d2ff", "#ffffff", "#ff8800", "#cc00ff"];
   
@@ -688,6 +707,7 @@ function startCelebrationConfetti() {
   }
 
   function loopConfetti() {
+    if (!confettiCtx) return;
     confettiCtx.clearRect(0, 0, viewWidth, viewHeight);
     
     for (let p of confettiParticles) {
@@ -757,22 +777,24 @@ function declareWinner(flag) {
       playSound("grand_fanfare");
       speakGrandChampion(flag.name);
 
-      els.winnerHeading.innerText = "👑 TOURNAMENT CHAMPION 👑";
-      els.winnerHeading.style.color = "#ffd23f";
-      els.winnerFlagBox.classList.add("hidden");
-      els.winnerName.classList.add("hidden");
-      els.podiumContainer.classList.remove("hidden");
+      if (els.winnerHeading) {
+        els.winnerHeading.innerText = "👑 TOURNAMENT CHAMPION 👑";
+        els.winnerHeading.style.color = "#ffd23f";
+      }
+      if (els.winnerFlagBox) els.winnerFlagBox.classList.add("hidden");
+      if (els.winnerName) els.winnerName.classList.add("hidden");
+      if (els.podiumContainer) els.podiumContainer.classList.remove("hidden");
 
-      els.podium1Flag.innerText = podiumPlaces.first ? podiumPlaces.first.emoji : "🥇";
-      els.podium1Name.innerText = podiumPlaces.first ? podiumPlaces.first.name : "Champion";
+      if (els.podium1Flag) els.podium1Flag.innerText = podiumPlaces.first ? podiumPlaces.first.emoji : "🥇";
+      if (els.podium1Name) els.podium1Name.innerText = podiumPlaces.first ? podiumPlaces.first.name : "Champion";
 
-      els.podium2Flag.innerText = podiumPlaces.second ? podiumPlaces.second.emoji : "🥈";
-      els.podium2Name.innerText = podiumPlaces.second ? podiumPlaces.second.name : "Runner Up";
+      if (els.podium2Flag) els.podium2Flag.innerText = podiumPlaces.second ? podiumPlaces.second.emoji : "🥈";
+      if (els.podium2Name) els.podium2Name.innerText = podiumPlaces.second ? podiumPlaces.second.name : "Runner Up";
 
-      els.podium3Flag.innerText = podiumPlaces.third ? podiumPlaces.third.emoji : "🥉";
-      els.podium3Name.innerText = podiumPlaces.third ? podiumPlaces.third.name : "3rd Place";
+      if (els.podium3Flag) els.podium3Flag.innerText = podiumPlaces.third ? podiumPlaces.third.emoji : "🥉";
+      if (els.podium3Name) els.podium3Name.innerText = podiumPlaces.third ? podiumPlaces.third.name : "3rd Place";
 
-      els.winnerOverlay.classList.remove("hidden");
+      if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
       startCelebrationConfetti();
       return; 
     }
@@ -780,26 +802,32 @@ function declareWinner(flag) {
     // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
-    els.winnerHeading.innerText = "ROUND WINNER";
-    els.winnerHeading.style.color = "#ffd23f";
-    els.winnerFlagBox.classList.remove("hidden");
-    els.winnerName.classList.remove("hidden");
-    els.podiumContainer.classList.add("hidden");
+    if (els.winnerHeading) {
+      els.winnerHeading.innerText = "ROUND WINNER";
+      els.winnerHeading.style.color = "#ffd23f";
+    }
+    if (els.winnerFlagBox) {
+      els.winnerFlagBox.classList.remove("hidden");
+      els.winnerFlagBox.innerText = flag.emoji;
+    }
+    if (els.winnerName) {
+      els.winnerName.classList.remove("hidden");
+      els.winnerName.innerText = flag.name;
+    }
+    if (els.podiumContainer) els.podiumContainer.classList.add("hidden");
 
-    els.winnerOverlay.classList.remove("hidden");
-    els.winnerFlagBox.innerText = flag.emoji;
-    els.winnerName.innerText = flag.name;
+    if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
     
     recordQualifier(flag);
     
     setTimeout(() => {
-        els.winnerOverlay.classList.add("hidden");
+        if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
         
         if (round >= MAX_QUALIFYING_ROUNDS) {
           isFinalRound = true;
         } else {
           round++;
-          els.roundText.innerText = round;
+          if (els.roundText) els.roundText.innerText = round;
         }
 
         initGame();
@@ -834,6 +862,8 @@ function startLeaderboardAutoCycle() {
 }
 
 function renderLeaderboard() {
+  if (!els.qualifiedList) return;
+
   if (qualifiedTeams.length === 0) {
     let emptyHtml = `
       <div class="board-row" style="justify-content:center; opacity:0.6;">
@@ -909,7 +939,7 @@ function gameLoop() {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
     let mins = Math.floor(roundDuration / 60);
     let secs = Math.floor(roundDuration % 60);
-    els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    if (els.timerText) els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
     updateRoundFooterInfo(0);
 
     ctx.beginPath();
@@ -962,6 +992,39 @@ function gameLoop() {
       }
     }
 
+    // 🌟 রাউন্ড ব্যানার টেক্সট (সব পতাকার সবার ওপরে ফ্রস্টেড ডার্ক ব্যাজসহ)
+    let alpha = 1;
+    if (warmupElapsed > 1.8) {
+      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
+    }
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
+    ctx.font = "900 24px system-ui, -apple-system, sans-serif";
+    let textMetrics = ctx.measureText(roundBannerText);
+    let bgWidth = textMetrics.width + 48;
+    let bgHeight = 46;
+
+    ctx.fillStyle = "rgba(3, 8, 20, 0.92)";
+    ctx.strokeStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.shadowBlur = 16;
+
+    ctx.beginPath();
+    ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.fillText(roundBannerText, arenaX, arenaY);
+
+    ctx.restore();
+
     if (warmupElapsed >= warmupDuration) {
       isWarmup = false;
       startTime = Date.now();
@@ -976,7 +1039,7 @@ function gameLoop() {
     
     let mins = Math.floor(timeLeft / 60);
     let secs = Math.floor(timeLeft % 60);
-    els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    if (els.timerText) els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
 
     updateRoundFooterInfo(elapsed);
 
@@ -1130,7 +1193,6 @@ function gameLoop() {
   let currentLineWidth = fullLineWidth * flagRatio;
   let lineY = arenaY + arenaR + 14; 
 
-  // (A) ব্যাকগ্রাউন্ড ট্র্যাক
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
   ctx.lineTo(lineStartX + fullLineWidth, lineY);
@@ -1139,7 +1201,6 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // (B) গোল্ডেন লাইন
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
   ctx.lineTo(lineStartX + currentLineWidth, lineY);
@@ -1169,44 +1230,6 @@ function gameLoop() {
   ctx.globalAlpha = 1.0;
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
-  }
-
-  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট (সব পতাকার সবার ওপরে ফ্রস্টেড ডার্ক ব্যাজসহ)
-  if (isWarmup) {
-    let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
-    let alpha = 1;
-    if (warmupElapsed > 1.8) {
-      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
-    }
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-
-    let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
-    ctx.font = "900 24px system-ui, -apple-system, sans-serif";
-    let textMetrics = ctx.measureText(roundBannerText);
-    let bgWidth = textMetrics.width + 48;
-    let bgHeight = 46;
-
-    // ব্যাকগ্রাউন্ড ফ্রস্টেড ডার্ক পিল
-    ctx.fillStyle = "rgba(3, 8, 20, 0.92)";
-    ctx.strokeStyle = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.shadowBlur = 16;
-
-    ctx.beginPath();
-    ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
-    ctx.fill();
-    ctx.stroke();
-
-    // ওপরে টেক্সট ড্র
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.fillText(roundBannerText, arenaX, arenaY);
-
-    ctx.restore();
   }
   
   requestAnimationFrame(gameLoop);
