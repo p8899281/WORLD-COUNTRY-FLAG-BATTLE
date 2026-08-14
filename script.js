@@ -92,7 +92,7 @@ let warmupStartTime = 0;
 const warmupDuration = 2.5;
 
 let startTime = 0;
-let roundDuration = 45; // রেগুলার রাউন্ড ৪৫ সেকেন্ড, ফাইনালে ২০০ সেকেন্ড (৩.৩ মিনিট)
+let roundDuration = 45; 
 
 let qualifiedTeams = [];
 let leaderboardPage = 0;
@@ -499,8 +499,7 @@ function initGame() {
 
   let currentPool = [];
   if (isFinalRound) {
-    // ⏱️ ফাইনাল রাউন্ডের সময়সীমা: ২০০ সেকেন্ড (৩ মিনিট ২০ সেকেন্ড = ৩ থেকে ৩.৫ মিনিটের মধ্যে)
-    roundDuration = 200; 
+    roundDuration = 200; // ৩ মিনিট ২০ সেকেন্ড (৩ থেকে ৩.৫ মিনিটের মধ্যে)
 
     currentPool = qualifiedTeams.map(t => [t.code, t.name, t.emoji]);
     if (currentPool.length < 3) {
@@ -519,8 +518,7 @@ function initGame() {
     els.stageLabel.innerText = "CHAMPIONSHIP";
     els.boardHeading.innerText = "FINALISTS LEADERBOARD";
   } else {
-    // ⏱️ রেগুলার রাউন্ড ৪৫ সেকেন্ড
-    roundDuration = 45;
+    roundDuration = 45; // রেগুলার রাউন্ড ৪৫ সেকেন্ড
 
     currentPool = countryList;
     TOTAL_FLAGS = countryList.length;
@@ -939,7 +937,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ
+  // ⚔️ ২. মূল লড়াই ফেজ (৪০ - ৪৫ সেকেন্ডে সাধারণ রাউন্ড, ৩ - ৩.৫ মিনিটে ফাইনাল)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -951,15 +949,16 @@ function gameLoop() {
 
     updateRoundFooterInfo(elapsed);
 
-    // 🎯 ফাইনাল রাউন্ড (১৮০-২১০ সেকেন্ড) বনাম সাধারণ রাউন্ড (৪০-৪৫ সেকেন্ড) পেসিং
-    let timeRatio = isFinalRound ? Math.min(1, elapsed / 190.0) : Math.min(1, elapsed / 42.0);
-    let outwardPush = 0.25 + Math.pow(timeRatio, 1.4) * 0.85;
+    let targetDuration = isFinalRound ? 190.0 : 41.5;
+    let timeRatio = Math.min(1, elapsed / targetDuration);
+
+    let outwardPush = 0.28 + Math.pow(timeRatio, 1.3) * 0.85;
     let speedMult = 2.4 + timeRatio * 2.6;
 
     let activeGapSize = baseGapSize;
     if (isFinalRound) {
       if (activeFlags.length <= 10) {
-        activeGapSize = baseGapSize * 0.5; // শেষ ১০ জনে মুখ ছোট হবে
+        activeGapSize = baseGapSize * 0.5;
       } else if (elapsed >= 165.0) {
         let lateRatio = Math.min(1, (elapsed - 165.0) / 25.0);
         activeGapSize = baseGapSize * (1 + lateRatio * 1.1);
@@ -978,22 +977,13 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    // ⏱️ ৩ থেকে ৩.৫ মিনিটের ফাইনাল রাউন্ড পেসিং কন্ট্রোল
+    // ⏱️ নিখুঁত পেসিং ক্যালকুলেটর
     let targetMaxAlive;
-    if (isFinalRound) {
-      if (elapsed < 185.0) {
-        let p = elapsed / 185.0;
-        targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.2))));
-      } else {
-        targetMaxAlive = 1; // ১৮৫ থেকে ২০৫ সেকেন্ডের (৩ থেকে ৩.৫ মিনিট) মধ্যে শেষ বিজয়ী হবে
-      }
+    if (elapsed < targetDuration) {
+      let p = elapsed / targetDuration;
+      targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.2))));
     } else {
-      if (elapsed < 41.5) {
-        let p = elapsed / 41.5;
-        targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.15))));
-      } else {
-        targetMaxAlive = 1; // ৪০-৪৫ সেকেন্ডে সাধারণ রাউন্ড শেষ
-      }
+      targetMaxAlive = 1;
     }
 
     const len = activeFlags.length;
@@ -1043,12 +1033,13 @@ function gameLoop() {
       let currentV = Math.hypot(f.vx, f.vy);
       if (currentV > 25.0) {
         f.vx = (f.vx / currentV) * 25.0;
-        f.vy = (f.vy / currentV) * 24.0;
+        f.vy = (f.vy / currentV) * 25.0;
       }
 
       f.x += f.vx * (speedMult * 0.28);
       f.y += f.vy * (speedMult * 0.28);
       
+      // 🚀 নির্গমন (Escape) ও বাউন্স লজিক
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
@@ -1058,8 +1049,12 @@ function gameLoop() {
             if (inYellow) {
                 bounceFlag(f, dx, dy, dist); 
             } else {
-                if (activeFlags.length > targetMaxAlive && dist > arenaR + 4) {
-                    eliminate(f);
+                // উন্মুক্ত গ্যাপ: পেসিং অনুযায়ী বের হতে দেওয়া হবে
+                if (activeFlags.length > targetMaxAlive) {
+                    if (dist > arenaR + f.r + 2) {
+                        eliminate(f);
+                    }
+                    // বের হওয়ার সময় কোনো বাউন্স হবে না
                 } else {
                     bounceFlag(f, dx, dy, dist);
                 }
