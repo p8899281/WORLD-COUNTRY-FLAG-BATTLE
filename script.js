@@ -41,12 +41,16 @@ let roundDuration = 45;
 
 let qualifiedTeams = [];
 
+// 🔊 HIGH-QUALITY WEB AUDIO SYSTEM
 let audioCtx = null;
 let lastSoundTime = 0;
 
 let bgmInterval = null;
 let bgmStep = 0;
-const bgmNotes = [220, 261.63, 293.66, 329.63, 392.00, 440, 523.25, 329.63]; 
+
+// রিদমিক আর্কেড বিট ও কর্ড সিকোয়েন্স (Am - F - C - G Melody Progression)
+const bgmBassNotes = [110, 110, 87.31, 87.31, 130.81, 130.81, 98.0, 98.0];
+const bgmLeadNotes = [440, 523.25, 659.25, 523.25, 698.46, 523.25, 783.99, 659.25];
 
 function unlockAudio() {
   if (!audioCtx) {
@@ -68,31 +72,50 @@ function requestFullscreen() {
   }
 }
 
+// 🎵 নতুন এনার্জেটিক ব্যাকগ্রাউন্ড মিউজিক ট্র্যাক
 function startBGM() {
   stopBGM();
   bgmStep = 0;
   bgmInterval = setInterval(() => {
     if (!audioCtx || !isPlaying) return;
     try {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      const freq = bgmNotes[bgmStep % bgmNotes.length];
-      bgmStep++;
+      const now = audioCtx.currentTime;
 
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      // 1. Bassline Synth
+      const bassOsc = audioCtx.createOscillator();
+      const bassGain = audioCtx.createGain();
+      const bassFreq = bgmBassNotes[bgmStep % bgmBassNotes.length];
       
-      gain.gain.setValueAtTime(0.012, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.38);
+      bassOsc.type = "triangle";
+      bassOsc.frequency.setValueAtTime(bassFreq, now);
       
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      bassGain.gain.setValueAtTime(0.08, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
       
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.4);
+      bassOsc.connect(bassGain);
+      bassGain.connect(audioCtx.destination);
+      bassOsc.start(now);
+      bassOsc.stop(now + 0.23);
+
+      // 2. Plucked Melody Line
+      const leadOsc = audioCtx.createOscillator();
+      const leadGain = audioCtx.createGain();
+      const leadFreq = bgmLeadNotes[bgmStep % bgmLeadNotes.length];
+      
+      leadOsc.type = "sine";
+      leadOsc.frequency.setValueAtTime(leadFreq, now);
+      
+      leadGain.gain.setValueAtTime(0.05, now);
+      leadGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+      
+      leadOsc.connect(leadGain);
+      leadGain.connect(audioCtx.destination);
+      leadOsc.start(now);
+      leadOsc.stop(now + 0.17);
+
+      bgmStep++;
     } catch (e) {}
-  }, 220); 
+  }, 160); // 160ms রিদমিক টেম্পো
 }
 
 function stopBGM() {
@@ -102,70 +125,94 @@ function stopBGM() {
   }
 }
 
+// 🔊 লাউডার এবং রিয়েলিস্টিক পাঞ্চি সাউন্ড এফেক্টস
 function playSound(type, intensity = 1) {
-  if (!audioCtx) return;
+  if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
   
   const nowTime = Date.now();
 
   try {
+    const now = audioCtx.currentTime;
+
+    // 💥 রিয়েলিস্টিক বল বাউন্স (Punchy Rubber-Ball Impact)
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 20) return;
+      if (nowTime - lastSoundTime < 22) return;
       lastSoundTime = nowTime;
 
+      // Body Thump
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const basePitch = 230 + Math.random() * 40 + Math.min(intensity, 3) * 15;
-      osc.type = "sine";
+      const pitch = 380 + Math.random() * 60 + Math.min(intensity, 4) * 20;
+      osc.type = "triangle";
       
-      osc.frequency.setValueAtTime(basePitch, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(55, audioCtx.currentTime + 0.035);
+      osc.frequency.setValueAtTime(pitch, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.045);
       
-      const vol = Math.min(0.07, 0.015 + intensity * 0.008);
-      gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
+      const vol = Math.min(0.28, 0.12 + intensity * 0.04); // লাউড ভলিউম
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.045);
+      osc.start(now);
+      osc.stop(now + 0.055);
 
-    } else if (type === "out") {
+      // Attack Snap (Crisp click sound)
+      const snapOsc = audioCtx.createOscillator();
+      const snapGain = audioCtx.createGain();
+      snapOsc.type = "sine";
+      snapOsc.frequency.setValueAtTime(950, now);
+      snapOsc.frequency.exponentialRampToValueAtTime(200, now + 0.015);
+      
+      snapGain.gain.setValueAtTime(vol * 0.7, now);
+      snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018);
+      
+      snapOsc.connect(snapGain);
+      snapGain.connect(audioCtx.destination);
+      snapOsc.start(now);
+      snapOsc.stop(now + 0.02);
+
+    } 
+    // 🚪 আউট সাউন্ড (Pop / Whoosh)
+    else if (type === "out") {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
       osc.type = "sine";
-      osc.frequency.setValueAtTime(280 + Math.random() * 40, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(550, audioCtx.currentTime + 0.04);
-      osc.frequency.exponentialRampToValueAtTime(140, audioCtx.currentTime + 0.12);
+      osc.frequency.setValueAtTime(320 + Math.random() * 60, now);
+      osc.frequency.exponentialRampToValueAtTime(680, now + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.14);
       
-      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.13);
+      osc.start(now);
+      osc.stop(now + 0.15);
 
-    } else if (type === "win") {
+    } 
+    // 🏆 উইনার সাউন্ড (Triumphant Chord)
+    else if (type === "win") {
       stopBGM(); 
-      const freqs = [523.25, 659.25, 783.99, 1046.50];
+      const freqs = [523.25, 659.25, 783.99, 1046.50, 1318.51];
       freqs.forEach((freq, idx) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.08);
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
         
-        gain.gain.setValueAtTime(0.001, audioCtx.currentTime + idx * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.06, audioCtx.currentTime + idx * 0.08 + 0.04);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + idx * 0.08 + 1.2);
+        gain.gain.setValueAtTime(0.01, now + idx * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.25, now + idx * 0.09 + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.09 + 1.4);
         
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + idx * 0.08);
-        osc.stop(audioCtx.currentTime + idx * 0.08 + 1.25);
+        osc.start(now + idx * 0.09);
+        osc.stop(now + idx * 0.09 + 1.45);
       });
     }
   } catch (e) {}
