@@ -29,6 +29,7 @@ const whiteSpeed = 0.018;
 const yellowSpeed = 0.052; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
+let dpr = 1; // High DPI Scale Factor
 let isPlaying = false;
 let round = 1;
 
@@ -233,23 +234,31 @@ function startGame(mode) {
   requestAnimationFrame(gameLoop);
 }
 
+// 🎯 ULTRA HD CANVAS RESIZING FIX
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
-  arenaX = canvas.width / 2;
-  arenaY = canvas.height / 2 - 40;
+  dpr = window.devicePixelRatio || 1;
+  
+  // ক্যানভাসের আসল পিক্সেল সাইজ হাই-ডিপিআই বাড়ানো
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  
+  ctx.resetTransform();
+  ctx.scale(dpr, dpr);
+
+  arenaX = rect.width / 2;
+  arenaY = rect.height / 2 - 20;
   arenaR = Math.min(arenaX, arenaY) - 25; 
 
   const itemWidth = 22;
-  const itemsPerRow = Math.max(10, Math.floor((canvas.width - 20) / itemWidth));
-  const startX = (canvas.width - (itemsPerRow * itemWidth)) / 2 + 11;
+  const itemsPerRow = Math.max(10, Math.floor((rect.width - 20) / itemWidth));
+  const startX = (rect.width - (itemsPerRow * itemWidth)) / 2 + 11;
 
   deadFlags.forEach((flag, idx) => {
     const col = idx % itemsPerRow;
     const row = Math.floor(idx / itemsPerRow);
     flag.targetX = startX + col * itemWidth;
-    flag.targetY = canvas.height - 12 - (row * 18);
+    flag.targetY = rect.height - 12 - (row * 18);
     if (flag.settled) {
       flag.x = flag.targetX;
       flag.y = flag.targetY;
@@ -296,15 +305,16 @@ function eliminate(flag) {
   
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   
+  const rect = canvas.parentElement.getBoundingClientRect();
   const slotIndex = deadFlags.length;
   const itemWidth = 22;
-  const itemsPerRow = Math.max(10, Math.floor((canvas.width - 20) / itemWidth));
+  const itemsPerRow = Math.max(10, Math.floor((rect.width - 20) / itemWidth));
   const col = slotIndex % itemsPerRow;
   const row = Math.floor(slotIndex / itemsPerRow);
   
-  const startX = (canvas.width - (itemsPerRow * itemWidth)) / 2 + 11;
+  const startX = (rect.width - (itemsPerRow * itemWidth)) / 2 + 11;
   flag.targetX = startX + col * itemWidth;
-  flag.targetY = canvas.height - 12 - (row * 18);
+  flag.targetY = rect.height - 12 - (row * 18);
   flag.settled = false;
 
   deadFlags.push(flag); 
@@ -414,7 +424,8 @@ function gameLoop() {
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
   yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
   
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const rect = canvas.parentElement.getBoundingClientRect();
+  ctx.clearRect(0, 0, rect.width, rect.height);
   
   let gStart = whiteAngle;
   let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -505,15 +516,18 @@ function gameLoop() {
   ctx.stroke();
   ctx.shadowBlur = 0; 
 
-  ctx.font = "16px 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
+  // HD Font Rendering System
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.globalAlpha = 1.0; 
+  
+  ctx.font = "15px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.globalAlpha = 0.85; 
   for (let f of deadFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
 
-  ctx.font = "22px 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif";
+  ctx.font = "22px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.globalAlpha = 1.0;
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
