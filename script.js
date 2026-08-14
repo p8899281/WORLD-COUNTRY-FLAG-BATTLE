@@ -199,22 +199,22 @@ const countryData = [
   ["MG","Madagascar"],["MW","Malawi"],["MY","Malaysia"],["MV","Maldives"],["ML","Mali"],
   ["MT","Malta"],["MH","Marshall Islands"],["MR","Mauritania"],["MU","Mauritius"],["MX","Mexico"],
   ["FM","Micronesia"],["MD","Moldova"],["MC","Monaco"],["MN","Mongolia"],["ME","Montenegro"],
-  ["MA","Morocco"],["MZ","Mozambique"],["MM","Myanmar"],["NA","Namibia"],["NR","Nauru"],
-  ["NP","Nepal"],["NL","Netherlands"],["NZ","New Zealand"],["NI","Nicaragua"],["NE","Niger"],
-  ["NG","Nigeria"],["KP","North Korea"],["MK","North Macedonia"],["NO","Norway"],["OM","Oman"],
-  ["PK","Pakistan"],["PW","Palau"],["PA","Panama"],["PG","Papua New Guinea"],["PY","Paraguay"],
-  ["PE","Peru"],["PH","Philippines"],["PL","Poland"],["PT","Portugal"],["QA","Qatar"],
-  ["RO","Romania"],["RU","Russia"],["RW","Rwanda"],["KN","Saint Kitts and Nevis"],["LC","Saint Lucia"],
-  ["VC","Saint Vincent and the Grenadines"],["WS","Samoa"],["SM","San Marino"],["ST","Sao Tome and Principe"],["SA","Saudi Arabia"],
-  ["SN","Senegal"],["RS","Serbia"],["SC","Seychelles"],["SL","Sierra Leone"],["SG","Singapore"],
-  ["SK","Slovakia"],["SI","Slovenia"],["SB","Solomon Islands"],["SO","Somalia"],["ZA","South Africa"],
-  ["KR","South Korea"],["SS","South Sudan"],["ES","Spain"],["LK","Sri Lanka"],["SD","Sudan"],
-  ["SR","Suriname"],["SE","Sweden"],["CH","Switzerland"],["SY","Syria"],["TJ","Tajikistan"],
-  ["TZ","Tanzania"],["TH","Thailand"],["TL","Timor-Leste"],["TG","Togo"],["TO","Tonga"],
-  ["TT","Trinidad and Tobago"],["TN","Tunisia"],["TR","Turkey"],["TM","Turkmenistan"],["TV","Tuvalu"],
-  ["UG","Uganda"],["UA","Ukraine"],["AE","United Arab Emirates"],["GB","United Kingdom"],["US","United States"],
-  ["UY","Uruguay"],["UZ","Uzbekistan"],["VU","Vanuatu"],["VE","Venezuela"],["VN","Vietnam"],
-  ["YE","Yemen"],["ZM","Zambia"],["ZW","Zimbabwe"]
+  ["MA","Morocco"],["MZ","Mozambique"],["MM","Myanmar"],["NA","Namibia"],["NR","Nauru"],["NP","Nepal"],
+  ["NL","Netherlands"],["NZ","New Zealand"],["NI","Nicaragua"],["NE","Niger"],["NG","Nigeria"],
+  ["KP","North Korea"],["MK","North Macedonia"],["NO","Norway"],["OM","Oman"],["PK","Pakistan"],
+  ["PW","Palau"],["PA","Panama"],["PG","Papua New Guinea"],["PY","Paraguay"],["PE","Peru"],
+  ["PH","Philippines"],["PL","Poland"],["PT","Portugal"],["QA","Qatar"],["RO","Romania"],
+  ["RU","Russia"],["RW","Rwanda"],["KN","Saint Kitts and Nevis"],["LC","Saint Lucia"],
+  ["VC","Saint Vincent and the Grenadines"],["WS","Samoa"],["SM","San Marino"],["ST","Sao Tome and Principe"],
+  ["SA","Saudi Arabia"],["SN","Senegal"],["RS","Serbia"],["SC","Seychelles"],["SL","Sierra Leone"],
+  ["SG","Singapore"],["SK","Slovakia"],["SI","Slovenia"],["SB","Solomon Islands"],["SO","Somalia"],
+  ["ZA","South Africa"],["KR","South Korea"],["SS","South Sudan"],["ES","Spain"],["LK","Sri Lanka"],
+  ["SD","Sudan"],["SR","Suriname"],["SE","Sweden"],["CH","Switzerland"],["SY","Syria"],
+  ["TJ","Tajikistan"],["TZ","Tanzania"],["TH","Thailand"],["TL","Timor-Leste"],["TG","Togo"],
+  ["TO","Tonga"],["TT","Trinidad and Tobago"],["TN","Tunisia"],["TR","Turkey"],["TM","Turkmenistan"],
+  ["TV","Tuvalu"],["UG","Uganda"],["UA","Ukraine"],["AE","United Arab Emirates"],["GB","United Kingdom"],
+  ["US","United States"],["UY","Uruguay"],["UZ","Uzbekistan"],["VU","Vanuatu"],["VE","Venezuela"],
+  ["VN","Vietnam"],["YE","Yemen"],["ZM","Zambia"],["ZW","Zimbabwe"]
 ];
 
 const countryList = countryData.map(([code, name]) => [code, name, codeToFlagEmoji(code)]);
@@ -515,17 +515,27 @@ function gameLoop() {
   ctx.strokeStyle = "#00d2ff";
   ctx.stroke();
 
-  // 🟡 ৩. মোটা গোল্ডেন ইয়োলো হরাইজন্টাল লাইন (ডান থেকে বাম দিকে কমে আসবে)
+  // 🟡 ৩. গোল্ডেন ইয়োলো হরাইজন্টাল লাইন ও সাদা ব্যাকগ্রাউন্ড শ্যাডো
   let flagRatio = activeFlags.length / TOTAL_FLAGS;
-  let fullLineWidth = arenaR * 1.7; // পুরো লাইনের সর্বোচ্চ দৈর্ঘ্য
+  let fullLineWidth = arenaR * 1.7; // লাইনের সম্পূর্ণ দৈর্ঘ্য
   let lineStartX = arenaX - (fullLineWidth / 2); // বাঁ দিকের স্টার্টিং পয়েন্ট
   let currentLineWidth = fullLineWidth * flagRatio;
-  let lineY = arenaY + arenaR + 12; // রিংয়ের নিচে পজিশন
+  let lineY = arenaY + arenaR + 22; // রিংয়ের আরেকটু নিচে পজিশনিং
 
+  // (A) ব্যাকগ্রাউন্ড হালকা সাদা ট্র্যাক/শ্যাডো (শুরুতে সম্পূর্ণ কতখানি ছিল তা বোঝাতে)
+  ctx.beginPath();
+  ctx.moveTo(lineStartX, lineY);
+  ctx.lineTo(lineStartX + fullLineWidth, lineY);
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+  ctx.lineCap = "round";
+  ctx.stroke();
+
+  // (B) আসল গোল্ডেন ইয়োলো লাইন (ডান থেকে বাম দিকে কমে আসবে)
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
   ctx.lineTo(lineStartX + currentLineWidth, lineY);
-  ctx.lineWidth = 6; // লাইন মোটা করা হয়েছে
+  ctx.lineWidth = 6;
   ctx.strokeStyle = "#ffd700";
   ctx.lineCap = "round";
   ctx.stroke();
@@ -535,7 +545,7 @@ function gameLoop() {
   ctx.fillStyle = "#ffd700";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 8);
+  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 10);
 
   // HD Font Rendering
   ctx.textAlign = "center";
