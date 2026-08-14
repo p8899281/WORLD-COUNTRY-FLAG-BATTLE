@@ -29,6 +29,7 @@ const whiteSpeed = 0.018;
 const yellowSpeed = 0.052; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
+let viewWidth = 0, viewHeight = 0; // স্ক্রিন সাইজ ক্যাশ রাখার জন্য
 let dpr = 1;
 let isPlaying = false;
 let round = 1;
@@ -234,29 +235,34 @@ function startGame(mode) {
   requestAnimationFrame(gameLoop);
 }
 
+// ⚡ OPTIMIZED RESIZATION & DPI CAPPING FOR 60FPS
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
-  dpr = window.devicePixelRatio || 1;
+  viewWidth = rect.width;
+  viewHeight = rect.height;
   
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
+  // dpr সর্বোচ্চ 2 দিয়ে ক্যাপ করা হলো যাতে ল্যাগ না হয়
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  
+  canvas.width = viewWidth * dpr;
+  canvas.height = viewHeight * dpr;
   
   ctx.resetTransform();
   ctx.scale(dpr, dpr);
 
-  arenaX = rect.width / 2;
-  arenaY = rect.height / 2 - 20;
-  arenaR = Math.min(arenaX, arenaY) - 25; 
+  arenaX = viewWidth / 2;
+  arenaY = viewHeight / 2 - 25;
+  arenaR = Math.min(arenaX, arenaY) - 35; 
 
   const itemWidth = 22;
-  const itemsPerRow = Math.max(10, Math.floor((rect.width - 20) / itemWidth));
-  const startX = (rect.width - (itemsPerRow * itemWidth)) / 2 + 11;
+  const itemsPerRow = Math.max(10, Math.floor((viewWidth - 20) / itemWidth));
+  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 11;
 
   deadFlags.forEach((flag, idx) => {
     const col = idx % itemsPerRow;
     const row = Math.floor(idx / itemsPerRow);
     flag.targetX = startX + col * itemWidth;
-    flag.targetY = rect.height - 12 - (row * 18);
+    flag.targetY = viewHeight - 12 - (row * 18);
     if (flag.settled) {
       flag.x = flag.targetX;
       flag.y = flag.targetY;
@@ -303,16 +309,15 @@ function eliminate(flag) {
   
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   
-  const rect = canvas.parentElement.getBoundingClientRect();
   const slotIndex = deadFlags.length;
   const itemWidth = 22;
-  const itemsPerRow = Math.max(10, Math.floor((rect.width - 20) / itemWidth));
+  const itemsPerRow = Math.max(10, Math.floor((viewWidth - 20) / itemWidth));
   const col = slotIndex % itemsPerRow;
   const row = Math.floor(slotIndex / itemsPerRow);
   
-  const startX = (rect.width - (itemsPerRow * itemWidth)) / 2 + 11;
+  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 11;
   flag.targetX = startX + col * itemWidth;
-  flag.targetY = rect.height - 12 - (row * 18);
+  flag.targetY = viewHeight - 12 - (row * 18);
   flag.settled = false;
 
   deadFlags.push(flag); 
@@ -422,8 +427,7 @@ function gameLoop() {
   whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
   yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
   
-  const rect = canvas.parentElement.getBoundingClientRect();
-  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.clearRect(0, 0, viewWidth, viewHeight);
   
   let gStart = whiteAngle;
   let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -431,15 +435,18 @@ function gameLoop() {
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-  for (let i = 0; i < activeFlags.length; i++) {
-    for (let j = i + 1; j < activeFlags.length; j++) {
-      let f1 = activeFlags[i];
+  // ⚡ HIGH PERFORMANCE COLLISION DETECTION
+  const len = activeFlags.length;
+  for (let i = 0; i < len; i++) {
+    let f1 = activeFlags[i];
+    for (let j = i + 1; j < len; j++) {
       let f2 = activeFlags[j];
       let dx = f2.x - f1.x;
       let dy = f2.y - f1.y;
-      let dist = Math.hypot(dx, dy);
+      let distSq = dx * dx + dy * dy;
       let minDist = f1.r + f2.r;
-      if (dist < minDist && dist > 0) {
+      if (distSq < minDist * minDist && distSq > 0) {
+        let dist = Math.sqrt(distSq);
         let overlap = minDist - dist;
         let nx = dx / dist;
         let ny = dy / dist;
@@ -509,28 +516,23 @@ function gameLoop() {
   ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
   ctx.lineWidth = 6;
   ctx.strokeStyle = "#00d2ff";
-  ctx.shadowBlur = 14;
-  ctx.shadowColor = "#00d2ff";
   ctx.stroke();
-  ctx.shadowBlur = 0; 
 
-  // 🟡 ৩. গোল্ডেন ইয়োলো হরাইজন্টাল লাইন (Active Flags অনুযায়ী ছোট হতে থাকবে)
+  // 🟡 ৩. গোল্ডেন ইয়োলো হরাইজন্টাল লাইন (রিংয়ের ঠিক নিচে এবং জমানো পতাকার উপরে)
   let flagRatio = activeFlags.length / TOTAL_FLAGS;
-  let maxHalfWidth = arenaR * 0.85; // রিংয়ের ৮৫% ব্যাসার্ধ জুড়ে লাইন
+  let maxHalfWidth = arenaR * 0.85; 
   let currentHalfWidth = maxHalfWidth * flagRatio;
+  let lineY = arenaY + arenaR + 14; // রিংয়ের নিচে সেটিং
 
   ctx.beginPath();
-  ctx.moveTo(arenaX - currentHalfWidth, arenaY);
-  ctx.lineTo(arenaX + currentHalfWidth, arenaY);
+  ctx.moveTo(arenaX - currentHalfWidth, lineY);
+  ctx.lineTo(arenaX + currentHalfWidth, lineY);
   ctx.lineWidth = 3;
   ctx.strokeStyle = "#ffd700";
-  ctx.shadowBlur = 12;
-  ctx.shadowColor = "#ffd700";
   ctx.lineCap = "round";
   ctx.stroke();
-  ctx.shadowBlur = 0; // শ্যাডো ব্যাকআপ রিসেট
 
-  // HD Font Rendering System
+  // HD Font Rendering
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   
