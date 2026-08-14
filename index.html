@@ -49,6 +49,12 @@
     <div class="qualified-board">
       <div class="board-title" id="boardHeading">QUALIFIED FOR FINAL</div>
       <div class="board-list" id="qualifiedList"></div>
+      
+      <!-- ⏱️ বোর্ডের নিচের প্রোগ্রেস ও রিভার্স কাউন্টডাউন বার -->
+      <div class="board-footer">
+        <span class="rounds-status" id="roundProgressText">ROUNDS: 1 / 60</span>
+        <span class="final-countdown" id="finalCountdownText">FINAL IN: 59 ROUNDS</span>
+      </div>
     </div>
 
     <div class="arena-container">
@@ -56,14 +62,12 @@
       
       <!-- Winner & Grand Final Podium Overlay -->
       <div id="winnerOverlay" class="winner-overlay hidden">
-        <!-- 🎉 কনফেটি ও সেলিব্রেশন ক্যানভাস -->
         <canvas id="confettiCanvas"></canvas>
 
         <div class="round-winner-text" id="winnerHeading">ROUND WINNER</div>
         <div class="winner-flag-box" id="winnerFlagBox">🏳️</div>
         <div class="winner-name" id="winnerName">Country</div>
 
-        <!-- 🏆 গ্র্যান্ড ফাইনালের ১ম, ২য় ও ৩য় স্থান সেলিব্রেশন পোডিয়াম -->
         <div id="podiumContainer" class="podium-container hidden">
           <div class="celebration-badge">🎊 GRAND CELEBRATION 🎊</div>
           
