@@ -23,6 +23,8 @@ const els = {
   podium3Name: document.getElementById("podium3Name"),
   boardHeading: document.getElementById("boardHeading"),
   qualifiedList: document.getElementById("qualifiedList"),
+  roundProgressText: document.getElementById("roundProgressText"),
+  finalCountdownText: document.getElementById("finalCountdownText"),
   timerText: document.getElementById("timerText")
 };
 
@@ -360,6 +362,7 @@ function beginBattle() {
   
   initGame();
   startLeaderboardAutoCycle();
+  updateRoundFooterInfo();
   isPlaying = true;
   startBGM(); 
   requestAnimationFrame(gameLoop);
@@ -396,12 +399,12 @@ function resizeCanvas() {
   const totalDeadRows = Math.ceil(TOTAL_FLAGS / itemsPerRow);
   const deadFlagsHeight = totalDeadRows * 14 + 10;
 
-  const topReserved = 100;
+  const topReserved = 112; 
   const bottomReserved = deadFlagsHeight + 42;
   const availableH = Math.max(180, viewHeight - topReserved - bottomReserved);
 
   arenaR = Math.min((viewWidth - 36) / 2, availableH / 2);
-  arenaY = topReserved + (availableH / 2) - 10;
+  arenaY = topReserved + (availableH / 2) - 8;
 
   deadFlags.forEach((flag, idx) => {
     const col = idx % itemsPerRow;
@@ -413,6 +416,18 @@ function resizeCanvas() {
       flag.y = flag.targetY;
     }
   });
+}
+
+// ⏱️ রাউন্ড সংখ্যা ও রিভার্স কাউন্টডাউন টেক্সট আপডেট
+function updateRoundFooterInfo() {
+  if (isFinalRound) {
+    if (els.roundProgressText) els.roundProgressText.innerText = "🏆 GRAND FINAL";
+    if (els.finalCountdownText) els.finalCountdownText.innerText = "STAGE ACTIVE";
+  } else {
+    if (els.roundProgressText) els.roundProgressText.innerText = `ROUNDS: ${round} / ${MAX_QUALIFYING_ROUNDS}`;
+    const remaining = Math.max(0, MAX_QUALIFYING_ROUNDS - round);
+    if (els.finalCountdownText) els.finalCountdownText.innerText = `FINAL IN: ${remaining} ROUND${remaining === 1 ? '' : 'S'}`;
+  }
 }
 
 function initGame() {
@@ -456,6 +471,7 @@ function initGame() {
   }
   activeFlags = [...flags];
   renderLeaderboard();
+  updateRoundFooterInfo();
 }
 
 function normalizeAngle(a) {
@@ -505,7 +521,6 @@ function eliminate(flag) {
   }
 }
 
-// 🎊 কনফেটি ও ফায়ারওয়ার্কস সেলিব্রেশন অ্যানিমেশন লজিক
 function startCelebrationConfetti() {
   confettiParticles = [];
   const colors = ["#ffd700", "#ff0055", "#00ff66", "#00d2ff", "#ffffff", "#ff8800", "#cc00ff"];
@@ -552,7 +567,6 @@ function startCelebrationConfetti() {
 
     confettiParticles = confettiParticles.filter(p => p.alpha > 0);
     
-    //持续补充小礼花
     if (confettiParticles.length < 90) {
       for (let j = 0; j < 6; j++) {
         confettiParticles.push({
@@ -582,7 +596,6 @@ function declareWinner(flag) {
     if (!isPlaying) return;
     isPlaying = false;
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী সেলিব্রেশন
     if (isFinalRound) {
       podiumPlaces.first = flag;
       playSound("grand_fanfare");
@@ -603,11 +616,10 @@ function declareWinner(flag) {
       els.podium3Name.innerText = podiumPlaces.third ? podiumPlaces.third.name : "3rd Place";
 
       els.winnerOverlay.classList.remove("hidden");
-      startCelebrationConfetti(); // 🎊 গ্র্যান্ড সেলিব্রেশন কনফেটি চালু
+      startCelebrationConfetti();
       return; 
     }
 
-    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     els.winnerHeading.innerText = "ROUND WINNER";
@@ -646,6 +658,7 @@ function recordQualifier(flag) {
     qualifiedTeams.push({ code: flag.code, name: flag.name, emoji: flag.emoji, wins: 1 });
   }
   renderLeaderboard();
+  updateRoundFooterInfo();
 }
 
 function startLeaderboardAutoCycle() {
