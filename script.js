@@ -294,13 +294,14 @@ function initGame() {
   deadFlags = [];
   startTime = Date.now();
   
+  // 🎯 শুরুতে ধীর গতিতে ঘোরার জন্য প্রারম্ভিক গতি ৩ থেকে কমিয়ে ২ করা হলো
   for (let i = 0; i < TOTAL_FLAGS; i++) {
     let country = countryList[i];
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
       x: arenaX + (Math.random() - 0.5) * (arenaR * 0.8),
       y: arenaY + (Math.random() - 0.5) * (arenaR * 0.8),
-      vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
+      vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 3,
       r: 10, active: true, settled: false, targetX: 0, targetY: 0
     };
     flags.push(flagObj);
@@ -426,15 +427,23 @@ function gameLoop() {
   els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
   els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
 
-  let activeGapSize = (timeLeft === 0 && activeFlags.length > 1) ? gapSize * 2.2 : gapSize;
-
+  // 🎯 প্রোগ্রেস (০ থেকে ১ পর্যন্ত সময় বাড়ার অনুপাতে)
   let progress = Math.min(1, elapsed / roundDuration);
-  let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.75))));
-  let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
-  let speedMult = (1.2 + progress * 2.2) * pressureMult; 
+
+  // 🎯 সময়ের সাথে সাথে ৪৫ সেকেন্ডে ১টিতে নামিয়ে আনার জন্য টার্গেট গণনা
+  let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.65))));
+  let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.12 : 1.0;
   
-  whiteAngle = normalizeAngle(whiteAngle + whiteSpeed);
-  yellowAngle = normalizeAngle(yellowAngle + yellowSpeed);
+  // 🎯 শুরুতে গতি বেশ কম (0.55) থেকে শুরু হয়ে সময়ের সাথে দ্রুত (4.5+) হতে থাকবে
+  let speedMult = (0.55 + Math.pow(progress, 1.8) * 4.2) * pressureMult; 
+
+  // 🎯 সময় শেষ দিকে (শেষ ৫ সেকেন্ডে) রিংয়ের ফাঁকা জায়গা বাড়িয়ে সব বের করে দেওয়া যাতে ৪৫ সেকেন্ডে উইনার পাওয়া যায়
+  let activeGapSize = (timeLeft <= 5 && activeFlags.length > 1) 
+    ? gapSize * (1 + (5 - timeLeft) * 0.4) 
+    : gapSize;
+  
+  whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progress * 0.5));
+  yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progress * 0.5));
   
   ctx.clearRect(0, 0, viewWidth, viewHeight);
   
@@ -471,9 +480,10 @@ function gameLoop() {
     let dy = f.y - arenaY;
     let dist = Math.hypot(dx, dy) || 1;
     
+    // কেন্দ্র থেকে বাইরের দিকে ঠেলার প্রেশার
     if (dist < arenaR * 0.6) {
-        f.vx += (dx / dist) * 0.2 * pressureMult;
-        f.vy += (dy / dist) * 0.2 * pressureMult;
+        f.vx += (dx / dist) * 0.25 * pressureMult;
+        f.vy += (dy / dist) * 0.25 * pressureMult;
     }
 
     f.x += f.vx * (speedMult * 0.35);
@@ -550,7 +560,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. লাইনের নিচে টেক্সট (এখন সাদা রঙের)
+  // 🏷️ ৪. লাইনের নিচে টেক্সট
   ctx.font = "bold 13px sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
