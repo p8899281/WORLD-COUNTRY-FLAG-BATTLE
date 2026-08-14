@@ -1,5 +1,5 @@
 const canvas = document.getElementById("arena");
-const ctx = canvas.getContext("2d");
+const ctx = canvas ? canvas.getContext("2d") : null;
 
 const confettiCanvas = document.getElementById("confettiCanvas");
 const confettiCtx = confettiCanvas ? confettiCanvas.getContext("2d") : null;
@@ -87,7 +87,23 @@ function setTournamentRounds(num, btnElement) {
   }
 }
 
-// 🎵 AUDIO SYSTEM (BGM Selector, Volume & GitHub Direct Link Support)
+// 🎉 কনফেটি ও নকআউট টাইমার হ্যান্ডলার (একবার ডিক্লেয়ার করা হয়েছে)
+let confettiParticles = [];
+let confettiAnimationId = null;
+let knockoutTimeout = null;
+
+let isWarmup = true;
+let warmupStartTime = 0;
+const warmupDuration = 2.5;
+
+let startTime = 0;
+let roundDuration = 45; 
+
+let qualifiedTeams = [];
+let leaderboardPage = 0;
+let leaderboardInterval = null;
+
+// 🎵 AUDIO SYSTEM
 let audioCtx = null;
 let lastSoundTime = 0;
 let masterVolume = 0.7;
@@ -454,6 +470,7 @@ function beginBattle() {
 }
 
 function resizeCanvas() {
+  if (!canvas) return;
   const rect = canvas.parentElement.getBoundingClientRect();
   viewWidth = rect.width;
   viewHeight = rect.height;
@@ -604,8 +621,6 @@ function isAngleBetween(target, start, end) {
   if (start < end) return target >= start && target <= end;
   return target >= start || target <= end;
 }
-
-let knockoutTimeout = null;
 
 function showKnockoutOverlay(flag) {
   isPlaying = false;
@@ -928,7 +943,7 @@ function bounceFlag(f, dx, dy, dist) {
 }
 
 function gameLoop() {
-  if (!isPlaying) return;
+  if (!isPlaying || !ctx) return;
   
   ctx.clearRect(0, 0, viewWidth, viewHeight);
 
@@ -992,7 +1007,7 @@ function gameLoop() {
       }
     }
 
-    // 🌟 রাউন্ড ব্যানার টেক্সট (সব পতাকার সবার ওপরে ফ্রস্টেড ডার্ক ব্যাজসহ)
+    // 🌟 রাউন্ড ব্যানার টেক্সট
     let alpha = 1;
     if (warmupElapsed > 1.8) {
       alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
@@ -1013,10 +1028,15 @@ function gameLoop() {
     ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
     ctx.shadowBlur = 16;
 
-    ctx.beginPath();
-    ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
-    ctx.fill();
-    ctx.stroke();
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
+      ctx.strokeRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
+    }
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -1031,7 +1051,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (৪০ - ৪৫ সেকেন্ডে সাধারণ রাউন্ড, ৩ - ৩.৫ মিনিটে ফাইনাল)
+  // ⚔️ ২. মূল লড়াই ফেজ
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -1209,7 +1229,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. আল্ট্রা-শার্প সাদা টেক্সট
+  // 🏷️ ৪. আল্ট্রা-শার্প টেক্সট
   ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
@@ -1234,6 +1254,13 @@ function gameLoop() {
   
   requestAnimationFrame(gameLoop);
 }
+
+// গ্লোবাল ফাংশন বাইন্ডিং
+window.selectMode = selectMode;
+window.setTournamentRounds = setTournamentRounds;
+window.handleBgmSelectChange = handleBgmSelectChange;
+window.changeVolume = changeVolume;
+window.beginBattle = beginBattle;
 
 document.addEventListener("click", unlockAudio);
 document.addEventListener("touchstart", unlockAudio);
