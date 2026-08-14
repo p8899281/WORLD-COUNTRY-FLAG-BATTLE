@@ -403,6 +403,7 @@ function beginBattle() {
   requestAnimationFrame(gameLoop);
 }
 
+// 🎯 রিং বড় করা এবং লিডারবোর্ড ও প্রোগ্রেস লাইনের ঠিক মাঝখানে নিখুঁত কেন্দ্রস্থকরণ
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   viewWidth = rect.width;
@@ -432,14 +433,17 @@ function resizeCanvas() {
   const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 10;
   
   const totalDeadRows = Math.ceil(TOTAL_FLAGS / itemsPerRow);
-  const deadFlagsHeight = totalDeadRows * 14 + 10;
+  const deadFlagsHeight = totalDeadRows * 14 + 8;
 
-  const topReserved = 112; 
-  const bottomReserved = deadFlagsHeight + 42;
-  const availableH = Math.max(180, viewHeight - topReserved - bottomReserved);
+  // লিডারবোর্ড (শীর্ষ) এবং প্রোগ্রেস লাইন / মৃত ফ্ল্যাগ জোনের মাঝের উচ্চতা
+  const topPadding = 10; 
+  const bottomReserved = deadFlagsHeight + 36;
+  const usableH = Math.max(180, viewHeight - topPadding - bottomReserved);
 
-  arenaR = Math.min((viewWidth - 36) / 2, availableH / 2);
-  arenaY = topReserved + (availableH / 2) - 8;
+  // রিংয়ের সাইজ আগের চেয়ে বড় করা হয়েছে
+  arenaR = Math.min((viewWidth - 20) / 2, usableH / 2);
+  // লিডারবোর্ড ও প্রোগ্রেস লাইনের ঠিক মধ্যবিন্দুতে সেট
+  arenaY = topPadding + (usableH / 2);
 
   deadFlags.forEach((flag, idx) => {
     const col = idx % itemsPerRow;
@@ -601,7 +605,6 @@ function eliminate(flag) {
 
   deadFlags.push(flag); 
   
-  // 🎙️ ফাইনাল রাউন্ডে পোডিয়াম ট্র্যাকিং ও নকআউট বিরতি
   if (isFinalRound) {
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
@@ -696,7 +699,7 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী (15, 30, 60, 90, 120 সব রাউন্ডেই সম্পূর্ণ নিশ্চিত)
+    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী (15, 30, 60, 90, 120 সব রাউন্ডেই চলবে)
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -748,7 +751,6 @@ function declareWinner(flag) {
     setTimeout(() => {
         els.winnerOverlay.classList.add("hidden");
         
-        // নির্বাচিত রাউন্ড পূর্ণ হলে ফাইনাল রাউন্ডে স্থানান্তর
         if (round >= MAX_QUALIFYING_ROUNDS) {
           isFinalRound = true;
         } else {
@@ -1061,7 +1063,7 @@ function gameLoop() {
   let fullLineWidth = arenaR * 1.6; 
   let lineStartX = arenaX - (fullLineWidth / 2); 
   let currentLineWidth = fullLineWidth * flagRatio;
-  let lineY = arenaY + arenaR + 16; 
+  let lineY = arenaY + arenaR + 14; 
 
   // (A) ব্যাকগ্রাউন্ড ট্র্যাক
   ctx.beginPath();
@@ -1086,7 +1088,7 @@ function gameLoop() {
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 8);
+  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 7);
 
   // 🎨 ইমোজি রেন্ডারিং
   ctx.textAlign = "center";
