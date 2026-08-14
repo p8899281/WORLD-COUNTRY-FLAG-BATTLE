@@ -102,16 +102,18 @@ body {
 
 .rounds-btn-group {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .round-btn {
   background: rgba(0, 77, 38, 0.6);
   color: #ffffff;
   border: 1px solid var(--theme-green);
-  padding: 6px 14px;
+  padding: 6px 11px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   transition: all 0.2s ease;
