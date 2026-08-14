@@ -362,7 +362,7 @@ function beginBattle() {
   
   initGame();
   startLeaderboardAutoCycle();
-  updateRoundFooterInfo();
+  updateRoundFooterInfo(0);
   isPlaying = true;
   startBGM(); 
   requestAnimationFrame(gameLoop);
@@ -418,15 +418,27 @@ function resizeCanvas() {
   });
 }
 
-// ⏱️ রাউন্ড সংখ্যা ও রিভার্স কাউন্টডাউন টেক্সট আপডেট
-function updateRoundFooterInfo() {
+// ⏱️ মোট ৬০ রাউন্ডের (৪৫:০০ মিনিট) রিভার্স টাইম কাউন্টডাউন
+function updateRoundFooterInfo(currentElapsed = 0) {
   if (isFinalRound) {
     if (els.roundProgressText) els.roundProgressText.innerText = "🏆 GRAND FINAL";
     if (els.finalCountdownText) els.finalCountdownText.innerText = "STAGE ACTIVE";
-  } else {
-    if (els.roundProgressText) els.roundProgressText.innerText = `ROUNDS: ${round} / ${MAX_QUALIFYING_ROUNDS}`;
-    const remaining = Math.max(0, MAX_QUALIFYING_ROUNDS - round);
-    if (els.finalCountdownText) els.finalCountdownText.innerText = `FINAL IN: ${remaining} ROUND${remaining === 1 ? '' : 'S'}`;
+    return;
+  }
+
+  if (els.roundProgressText) {
+    els.roundProgressText.innerText = `ROUNDS: ${round} / ${MAX_QUALIFYING_ROUNDS}`;
+  }
+
+  if (els.finalCountdownText) {
+    const totalTournamentSecs = MAX_QUALIFYING_ROUNDS * roundDuration; // 60 * 45 = 2700s (45 mins)
+    const elapsedSoFar = ((round - 1) * roundDuration) + currentElapsed;
+    const remainingSecs = Math.max(0, totalTournamentSecs - elapsedSoFar);
+
+    const totalMins = Math.floor(remainingSecs / 60);
+    const totalSecs = Math.floor(remainingSecs % 60);
+
+    els.finalCountdownText.innerText = `FINAL IN: ${totalMins < 10 ? '0' : ''}${totalMins}:${totalSecs < 10 ? '0' : ''}${totalSecs}`;
   }
 }
 
@@ -471,7 +483,7 @@ function initGame() {
   }
   activeFlags = [...flags];
   renderLeaderboard();
-  updateRoundFooterInfo();
+  updateRoundFooterInfo(0);
 }
 
 function normalizeAngle(a) {
@@ -658,7 +670,7 @@ function recordQualifier(flag) {
     qualifiedTeams.push({ code: flag.code, name: flag.name, emoji: flag.emoji, wins: 1 });
   }
   renderLeaderboard();
-  updateRoundFooterInfo();
+  updateRoundFooterInfo(0);
 }
 
 function startLeaderboardAutoCycle() {
@@ -748,6 +760,7 @@ function gameLoop() {
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
     els.timerText.innerText = `00:45`;
+    updateRoundFooterInfo(0);
 
     ctx.beginPath();
     ctx.arc(arenaX, arenaY, arenaR, 0, Math.PI * 2);
@@ -814,6 +827,9 @@ function gameLoop() {
     let mins = Math.floor(timeLeft / 60);
     let secs = Math.floor(timeLeft % 60);
     els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+    // ⏱️ রিয়েল-টাইমে গ্র্যান্ড ফাইনালের রিভার্স টাইমার আপডেট
+    updateRoundFooterInfo(elapsed);
 
     let timeRatio = Math.min(1, elapsed / 42.5);
 
