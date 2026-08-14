@@ -82,13 +82,57 @@ body {
 
 .start-flags-row { font-size: 22px; letter-spacing: 6px; margin-bottom: 12px; }
 .start-title { font-size: 20px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 6px; }
-.start-underline { width: 140px; height: 1px; background: rgba(255, 255, 255, 0.25); margin-bottom: 20px; }
+.start-underline { width: 140px; height: 1px; background: rgba(255, 255, 255, 0.25); margin-bottom: 14px; }
+
+/* 🔢 রাউন্ড সিলেক্টর স্টাইল */
+.rounds-selector-box {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.rounds-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--theme-green);
+}
+
+.rounds-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.round-btn {
+  background: rgba(0, 77, 38, 0.6);
+  color: #ffffff;
+  border: 1px solid var(--theme-green);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.round-btn:hover {
+  background: rgba(0, 255, 102, 0.2);
+}
+
+.round-btn.active {
+  background: var(--theme-yellow);
+  color: #000000;
+  border-color: var(--theme-yellow);
+  box-shadow: 0 0 12px rgba(255, 210, 63, 0.6);
+}
 
 .fullscreen-option {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   font-size: 13px;
   font-weight: 800;
   color: var(--theme-blue);
@@ -182,7 +226,6 @@ body.pc-mode #app {
 .country-name { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
 .win-count { color: var(--theme-yellow); flex-shrink: 0; }
 
-/* ⏱️ বোর্ডের নিচের প্রোগ্রেস ও রিভার্স কাউন্টডাউন বার */
 .board-footer {
   display: flex;
   justify-content: space-between;
@@ -195,14 +238,8 @@ body.pc-mode #app {
   letter-spacing: 0.5px;
 }
 
-.rounds-status {
-  color: var(--theme-yellow);
-}
-
-.final-countdown {
-  color: var(--theme-blue);
-  text-shadow: 0 0 6px rgba(0, 210, 255, 0.5);
-}
+.rounds-status { color: var(--theme-yellow); }
+.final-countdown { color: var(--theme-blue); text-shadow: 0 0 6px rgba(0, 210, 255, 0.5); }
 
 .arena-container { 
   position: relative; 
