@@ -41,16 +41,24 @@ let roundDuration = 45;
 
 let qualifiedTeams = [];
 
-// 🔊 HIGH-QUALITY WEB AUDIO SYSTEM
+// 🔊 HIGH-QUALITY SMOOTH AUDIO SYSTEM
 let audioCtx = null;
 let lastSoundTime = 0;
 
 let bgmInterval = null;
 let bgmStep = 0;
 
-// রিদমিক আর্কেড বিট ও কর্ড সিকোয়েন্স (Am - F - C - G Melody Progression)
-const bgmBassNotes = [110, 110, 87.31, 87.31, 130.81, 130.81, 98.0, 98.0];
-const bgmLeadNotes = [440, 523.25, 659.25, 523.25, 698.46, 523.25, 783.99, 659.25];
+// শান্ত ও আরামদায়ক অ্যাম্বিয়েন্ট কর্ড প্রগ্রেশন (Lo-Fi / Chill Gaming Vibe)
+const bgmChords = [
+  [261.63, 329.63, 392.00], // C Major
+  [261.63, 329.63, 392.00],
+  [220.00, 261.63, 329.63], // A minor
+  [220.00, 261.63, 329.63],
+  [174.61, 220.00, 261.63], // F Major
+  [174.61, 220.00, 261.63],
+  [196.00, 246.94, 293.66], // G Major
+  [196.00, 246.94, 293.66]
+];
 
 function unlockAudio() {
   if (!audioCtx) {
@@ -72,7 +80,7 @@ function requestFullscreen() {
   }
 }
 
-// 🎵 নতুন এনার্জেটিক ব্যাকগ্রাউন্ড মিউজিক ট্র্যাক
+// 🎵 সফট ও শান্ত ব্যাকগ্রাউন্ড মিউজিক (Lo-Fi Ambient Beats)
 function startBGM() {
   stopBGM();
   bgmStep = 0;
@@ -80,42 +88,47 @@ function startBGM() {
     if (!audioCtx || !isPlaying) return;
     try {
       const now = audioCtx.currentTime;
+      const currentChord = bgmChords[bgmStep % bgmChords.length];
 
-      // 1. Bassline Synth
-      const bassOsc = audioCtx.createOscillator();
-      const bassGain = audioCtx.createGain();
-      const bassFreq = bgmBassNotes[bgmStep % bgmBassNotes.length];
-      
-      bassOsc.type = "triangle";
-      bassOsc.frequency.setValueAtTime(bassFreq, now);
-      
-      bassGain.gain.setValueAtTime(0.08, now);
-      bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
-      
-      bassOsc.connect(bassGain);
-      bassGain.connect(audioCtx.destination);
-      bassOsc.start(now);
-      bassOsc.stop(now + 0.23);
+      // সফট প্যাড সাউন্ড (Sine + Lowpass filter)
+      currentChord.forEach((freq, index) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.type = "sine";
+        // এক অক্টেভ নিচে বাজানো হচ্ছে যাতে তীক্ষ্ণ না শোনায়
+        osc.frequency.setValueAtTime(freq / 2, now);
+        
+        // ভলিউম খুব সফট রাখা হয়েছে
+        gain.gain.setValueAtTime(0.015, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 1.3);
+      });
 
-      // 2. Plucked Melody Line
-      const leadOsc = audioCtx.createOscillator();
-      const leadGain = audioCtx.createGain();
-      const leadFreq = bgmLeadNotes[bgmStep % bgmLeadNotes.length];
-      
-      leadOsc.type = "sine";
-      leadOsc.frequency.setValueAtTime(leadFreq, now);
-      
-      leadGain.gain.setValueAtTime(0.05, now);
-      leadGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-      
-      leadOsc.connect(leadGain);
-      leadGain.connect(audioCtx.destination);
-      leadOsc.start(now);
-      leadOsc.stop(now + 0.17);
+      // হালকা রিদমিক থিক/বাস
+      if (bgmStep % 2 === 0) {
+        const bassOsc = audioCtx.createOscillator();
+        const bassGain = audioCtx.createGain();
+        
+        bassOsc.type = "triangle";
+        bassOsc.frequency.setValueAtTime(currentChord[0] / 4, now);
+        
+        bassGain.gain.setValueAtTime(0.04, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+        
+        bassOsc.connect(bassGain);
+        bassGain.connect(audioCtx.destination);
+        bassOsc.start(now);
+        bassOsc.stop(now + 0.45);
+      }
 
       bgmStep++;
     } catch (e) {}
-  }, 160); // 160ms রিদমিক টেম্পো
+  }, 450); // ধীর ও আরামদায়ক টেম্পো
 }
 
 function stopBGM() {
@@ -125,7 +138,7 @@ function stopBGM() {
   }
 }
 
-// 🔊 লাউডার এবং রিয়েলিস্টিক পাঞ্চি সাউন্ড এফেক্টস
+// 🔊 সফট ASMR স্টাইল সাউন্ড এফেক্টস
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -135,84 +148,70 @@ function playSound(type, intensity = 1) {
   try {
     const now = audioCtx.currentTime;
 
-    // 💥 রিয়েলিস্টিক বল বাউন্স (Punchy Rubber-Ball Impact)
+    // 💥 সফট বাউন্স সাউন্ড (কানে লাগবে না, ডিপ পপ/থুড সাউন্ড)
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 22) return;
+      if (nowTime - lastSoundTime < 35) return;
       lastSoundTime = nowTime;
 
-      // Body Thump
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const pitch = 380 + Math.random() * 60 + Math.min(intensity, 4) * 20;
-      osc.type = "triangle";
+      // পিচ অনেক কমানো হয়েছে (ডিপ সাউন্ডের জন্য)
+      const basePitch = 120 + Math.random() * 20 + Math.min(intensity, 3) * 10;
+      osc.type = "sine"; 
       
-      osc.frequency.setValueAtTime(pitch, now);
-      osc.frequency.exponentialRampToValueAtTime(70, now + 0.045);
+      osc.frequency.setValueAtTime(basePitch, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.05);
       
-      const vol = Math.min(0.28, 0.12 + intensity * 0.04); // লাউড ভলিউম
+      // ভলিউম আরামদায়ক মাত্রায় সেট করা হয়েছে
+      const vol = Math.min(0.12, 0.04 + intensity * 0.02);
       gain.gain.setValueAtTime(vol, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.055);
-
-      // Attack Snap (Crisp click sound)
-      const snapOsc = audioCtx.createOscillator();
-      const snapGain = audioCtx.createGain();
-      snapOsc.type = "sine";
-      snapOsc.frequency.setValueAtTime(950, now);
-      snapOsc.frequency.exponentialRampToValueAtTime(200, now + 0.015);
-      
-      snapGain.gain.setValueAtTime(vol * 0.7, now);
-      snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018);
-      
-      snapOsc.connect(snapGain);
-      snapGain.connect(audioCtx.destination);
-      snapOsc.start(now);
-      snapOsc.stop(now + 0.02);
+      osc.stop(now + 0.07);
 
     } 
-    // 🚪 আউট সাউন্ড (Pop / Whoosh)
+    // 🚪 আউট সাউন্ড (সফট শুশ/বাতাসের শব্দ)
     else if (type === "out") {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
       osc.type = "sine";
-      osc.frequency.setValueAtTime(320 + Math.random() * 60, now);
-      osc.frequency.exponentialRampToValueAtTime(680, now + 0.05);
-      osc.frequency.exponentialRampToValueAtTime(120, now + 0.14);
+      osc.frequency.setValueAtTime(200 + Math.random() * 30, now);
+      osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
       
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.15);
+      osc.stop(now + 0.16);
 
     } 
-    // 🏆 উইনার সাউন্ড (Triumphant Chord)
+    // 🏆 উইনার সাউন্ড (আরামদায়ক হার্প/বেলস)
     else if (type === "win") {
       stopBGM(); 
-      const freqs = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+      const freqs = [523.25, 659.25, 783.99, 1046.50];
       freqs.forEach((freq, idx) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
         
-        gain.gain.setValueAtTime(0.01, now + idx * 0.09);
-        gain.gain.exponentialRampToValueAtTime(0.25, now + idx * 0.09 + 0.04);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.09 + 1.4);
+        gain.gain.setValueAtTime(0.01, now + idx * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.15, now + idx * 0.12 + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.12 + 2.0);
         
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.start(now + idx * 0.09);
-        osc.stop(now + idx * 0.09 + 1.45);
+        osc.start(now + idx * 0.12);
+        osc.stop(now + idx * 0.12 + 2.1);
       });
     }
   } catch (e) {}
