@@ -21,11 +21,12 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const baseGapSize = Math.PI / 3.2;   // প্রাথমিক কাটা ফাঁকা জায়গা (~56°)
-const yellowSize = Math.PI / 4.2;    // নীল আর্চ
+const baseGapSize = Math.PI / 3.2;   
+const yellowSize = Math.PI / 4.2;    
 
-const whiteSpeed = 0.022; 
-const yellowSpeed = 0.058; 
+// ⚡ ৫ গুণ দ্রুত রিং ঘূর্ণন গতি
+const whiteSpeed = 0.038; 
+const yellowSpeed = 0.088; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
@@ -111,7 +112,7 @@ function playSound(type, intensity = 1) {
 
   try {
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 30) return;
+      if (nowTime - lastSoundTime < 20) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
@@ -307,7 +308,7 @@ function initGame() {
     let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.65);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 5.0 + Math.random() * 2.5; // সুন্দর প্রাণবন্ত গতি
+    let speed = 14.0 + Math.random() * 8.0; // ⚡ ৫ গুণ তীব্র প্রারম্ভিক স্পিড
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -410,28 +411,28 @@ function updateLeaderboard() {
     `).join("");
 }
 
-// ⚡ প্রাকৃতিক রিবাউন্ড বাউন্স
+// ⚡ ৫ গুণ গতিতেও দেয়াল লক রাখা ও শক্তিশালী বাউন্স
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  f.x = arenaX + nx * (arenaR - f.r - 2);
-  f.y = arenaY + ny * (arenaR - f.r - 2);
+  // পতাকাকে দেয়াল থেকে ভেতরে ক্ল্যাম্প রাখা
+  f.x = arenaX + nx * (arenaR - f.r - 2.5);
+  f.y = arenaY + ny * (arenaR - f.r - 2.5);
 
   let dot = (f.vx * nx) + (f.vy * ny);
   if (dot > 0) {
-    f.vx -= 1.95 * dot * nx;
-    f.vy -= 1.95 * dot * ny;
+    f.vx -= 2.05 * dot * nx;
+    f.vy -= 2.05 * dot * ny;
     
-    // হালকা সাইড ডিফ্লেকশন
     let tangX = -ny;
     let tangY = nx;
-    let scatter = (Math.random() - 0.5) * 1.5;
+    let scatter = (Math.random() - 0.5) * 3.5;
     f.vx += tangX * scatter;
     f.vy += tangY * scatter;
     
     const speed = Math.abs(dot);
-    if (speed > 0.4) {
+    if (speed > 0.5) {
       playSound("bounce", speed);
     }
   }
@@ -472,20 +473,20 @@ function gameLoop() {
           let nx = dx / dist;
           let ny = dy / dist;
           
-          f1.x -= nx * overlap * 0.4;
-          f1.y -= ny * overlap * 0.4;
-          f2.x += nx * overlap * 0.4;
-          f2.y += ny * overlap * 0.4;
+          f1.x -= nx * overlap * 0.45;
+          f1.y -= ny * overlap * 0.45;
+          f2.x += nx * overlap * 0.45;
+          f2.y += ny * overlap * 0.45;
         }
       }
     }
 
     for (let f of activeFlags) {
-      let jitterX = (Math.random() - 0.5) * 2;
-      let jitterY = (Math.random() - 0.5) * 2;
+      let jitterX = (Math.random() - 0.5) * 4;
+      let jitterY = (Math.random() - 0.5) * 4;
 
-      f.x += f.vx * 0.5 + jitterX;
-      f.y += f.vy * 0.5 + jitterY;
+      f.x += f.vx * 0.45 + jitterX;
+      f.y += f.vy * 0.45 + jitterY;
 
       let dx = f.x - arenaX;
       let dy = f.y - arenaY;
@@ -502,7 +503,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (প্রাকৃতিক ও ধারাবাহিক প্রস্থান)
+  // ⚔️ ২. মূল লড়াই ফেজ (৫ গুণ গতিতে ৪০ - ৪৫ সেকেন্ডে ফলাফল)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -513,21 +514,21 @@ function gameLoop() {
     els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
     els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
 
-    let timeRatio = Math.min(1, elapsed / 42.0);
+    let timeRatio = Math.min(1, elapsed / 42.5);
 
-    // গতি ও সেনট্রিফিউগাল পুশ মসৃণভাবে বাড়ানো যাতে নিয়মিত পতাকা বের হতে থাকে
-    let outwardPush = 0.14 + Math.pow(timeRatio, 1.3) * 0.28;
-    let speedMult = 1.05 + timeRatio * 0.85;
+    // ⚡ ৫ গুণ গতি ও সেন্ট্রিফিউগাল ব্যালান্স
+    let outwardPush = 0.35 + Math.pow(timeRatio, 1.2) * 0.65;
+    let speedMult = 2.8 + timeRatio * 2.2;
 
-    // শেষ ১০ সেকেন্ডে রিংয়ের দরজা মসৃণভাবে বড় হওয়া (প্রাকৃতিক ১ জন বিজয়ী পাওয়ার জন্য)
+    // শেষ ১০ সেকেন্ডে রিংয়ের দরজা মসৃণভাবে বড় হওয়া
     let activeGapSize = baseGapSize;
     if (elapsed >= 34.0) {
       let lateRatio = Math.min(1, (elapsed - 34.0) / 8.0);
-      activeGapSize = baseGapSize * (1 + lateRatio * 0.95);
+      activeGapSize = baseGapSize * (1 + lateRatio * 1.1);
     }
 
-    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.35));
-    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + timeRatio * 0.35));
+    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.4));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + timeRatio * 0.4));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -558,10 +559,10 @@ function gameLoop() {
           
           let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
           if (vrel > 0) {
-            f1.vx -= vrel * 0.9 * nx;
-            f1.vy -= vrel * 0.9 * ny;
-            f2.vx += vrel * 0.9 * nx;
-            f2.vy += vrel * 0.9 * ny;
+            f1.vx -= vrel * 0.95 * nx;
+            f1.vy -= vrel * 0.95 * ny;
+            f2.vx += vrel * 0.95 * nx;
+            f2.vy += vrel * 0.95 * ny;
           }
         }
       }
@@ -572,25 +573,24 @@ function gameLoop() {
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
       
-      // কেন্দ্র থেকে বাইরের দিকে নিয়মিত মসৃণ ধাক্কা
+      // কেন্দ্র থেকে পরিধির দিকে নিয়মিত ধাক্কা
       f.vx += (dx / dist) * outwardPush;
       f.vy += (dy / dist) * outwardPush;
 
-      // গতি সবসময় নিয়ন্ত্রিত রাখা
+      // ⚡ তীব্র গতির ক্যাপ
       let currentV = Math.hypot(f.vx, f.vy);
-      if (currentV > 8.5) {
-        f.vx = (f.vx / currentV) * 8.5;
-        f.vy = (f.vy / currentV) * 8.5;
+      if (currentV > 24.0) {
+        f.vx = (f.vx / currentV) * 24.0;
+        f.vy = (f.vy / currentV) * 24.0;
       }
 
-      f.x += f.vx * speedMult * 0.65;
-      f.y += f.vy * speedMult * 0.65;
+      f.x += f.vx * (speedMult * 0.28);
+      f.y += f.vy * (speedMult * 0.28);
       
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
 
-        // সম্পূর্ণ প্রাকৃতিকভাবে ফাঁকা জায়গা দিয়ে বের হবে
         if (inGap) {
             let inYellow = isAngleBetween(fAngle, yStart, yEnd);
             if (inYellow) {
