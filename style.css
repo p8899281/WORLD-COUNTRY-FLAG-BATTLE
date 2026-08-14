@@ -37,6 +37,17 @@
 
 * { box-sizing: border-box; }
 
+/* Elements toggled via el.hidden = true/false in JS must actually hide.
+   Several overlay classes below (.overlay, .settings-backdrop,
+   .champion-overlay) set their own `display: flex`, which — being an
+   author-stylesheet rule — silently overrides the browser's built-in
+   `[hidden] { display: none }` default. Without this rule those
+   overlays stay visible and clickable (covering the whole screen)
+   even while "hidden", which is why nothing in the game responds. */
+[hidden] {
+  display: none !important;
+}
+
 html, body {
   margin: 0;
   padding: 0;
