@@ -13,9 +13,24 @@
     <div class="mode-box">
       <h2>SELECT DEVICE MODE</h2>
       <div class="mode-btns">
-        <button onclick="startGame('mobile')">📱 MOBILE MODE</button>
-        <button onclick="startGame('pc')">💻 PC MODE</button>
+        <button onclick="selectMode('mobile')">📱 MOBILE MODE</button>
+        <button onclick="selectMode('pc')">💻 PC MODE</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 📸 স্ক্রিনশটের হুবহু Start Battle Screen -->
+  <div id="start-screen" class="overlay-screen hidden">
+    <div class="start-box">
+      <div class="start-flags-row">🇺🇸 🇧🇷 🇯🇵 🇫🇷 🇰🇷 🇩🇪 🇦🇷</div>
+      <h1 class="start-title">COUNTRY FLAGS BATTLE</h1>
+      <div class="start-underline"></div>
+      
+      <button class="start-battle-btn" onclick="beginBattle()">
+        <span class="play-icon">▶</span> START THE BATTLE
+      </button>
+
+      <div class="start-footer-text">193+ FLAGS · LAST FLAG STANDING WINS</div>
     </div>
   </div>
 
