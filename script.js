@@ -9,8 +9,7 @@ const els = {
   winnerName: document.getElementById("winnerName"),
   winnerFlagBox: document.getElementById("winnerFlagBox"),
   qualifiedList: document.getElementById("qualifiedList"),
-  timerText: document.getElementById("timerText"),
-  timeText2: document.getElementById("timeText2")
+  timerText: document.getElementById("timerText")
 };
 
 let TOTAL_FLAGS = 193; 
@@ -24,7 +23,6 @@ let yellowAngle = 0;
 const baseGapSize = Math.PI / 3.2;   
 const yellowSize = Math.PI / 4.2;    
 
-// ⚡ ৫ গুণ দ্রুত রিং ঘূর্ণন গতি
 const whiteSpeed = 0.038; 
 const yellowSpeed = 0.088; 
 
@@ -308,7 +306,7 @@ function initGame() {
     let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.65);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 14.0 + Math.random() * 8.0; // ⚡ ৫ গুণ তীব্র প্রারম্ভিক স্পিড
+    let speed = 14.0 + Math.random() * 8.0;
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -411,12 +409,10 @@ function updateLeaderboard() {
     `).join("");
 }
 
-// ⚡ ৫ গুণ গতিতেও দেয়াল লক রাখা ও শক্তিশালী বাউন্স
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  // পতাকাকে দেয়াল থেকে ভেতরে ক্ল্যাম্প রাখা
   f.x = arenaX + nx * (arenaR - f.r - 2.5);
   f.y = arenaY + ny * (arenaR - f.r - 2.5);
 
@@ -450,7 +446,6 @@ function gameLoop() {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
     
     els.timerText.innerText = `00:45`;
-    els.timeText2.innerText = `READY!`;
 
     ctx.beginPath();
     ctx.arc(arenaX, arenaY, arenaR, 0, Math.PI * 2);
@@ -503,7 +498,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (৫ গুণ গতিতে ৪০ - ৪৫ সেকেন্ডে ফলাফল)
+  // ⚔️ ২. মূল লড়াই ফেজ (৪৫ সেকেন্ড কাউন্টডাউন)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -512,15 +507,12 @@ function gameLoop() {
     let mins = Math.floor(timeLeft / 60);
     let secs = Math.floor(timeLeft % 60);
     els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    els.timeText2.innerText = `${Math.floor(timeLeft)}s`;
 
     let timeRatio = Math.min(1, elapsed / 42.5);
 
-    // ⚡ ৫ গুণ গতি ও সেন্ট্রিফিউগাল ব্যালান্স
     let outwardPush = 0.35 + Math.pow(timeRatio, 1.2) * 0.65;
     let speedMult = 2.8 + timeRatio * 2.2;
 
-    // শেষ ১০ সেকেন্ডে রিংয়ের দরজা মসৃণভাবে বড় হওয়া
     let activeGapSize = baseGapSize;
     if (elapsed >= 34.0) {
       let lateRatio = Math.min(1, (elapsed - 34.0) / 8.0);
@@ -536,7 +528,6 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    // ফ্ল্যাগ-টু-ফ্ল্যাগ ইলাস্টিক সংঘর্ষ
     const len = activeFlags.length;
     for (let i = 0; i < len; i++) {
       let f1 = activeFlags[i];
@@ -573,11 +564,9 @@ function gameLoop() {
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
       
-      // কেন্দ্র থেকে পরিধির দিকে নিয়মিত ধাক্কা
       f.vx += (dx / dist) * outwardPush;
       f.vy += (dy / dist) * outwardPush;
 
-      // ⚡ তীব্র গতির ক্যাপ
       let currentV = Math.hypot(f.vx, f.vy);
       if (currentV > 24.0) {
         f.vx = (f.vx / currentV) * 24.0;
