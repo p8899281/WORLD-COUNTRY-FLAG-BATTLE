@@ -499,7 +499,7 @@ function initGame() {
 
   let currentPool = [];
   if (isFinalRound) {
-    roundDuration = 200; // ৩ মিনিট ২০ সেকেন্ড (৩ থেকে ৩.৫ মিনিটের মধ্যে)
+    roundDuration = 200; // ৩ মিনিট ২০ সেকেন্ড
 
     currentPool = qualifiedTeams.map(t => [t.code, t.name, t.emoji]);
     if (currentPool.length < 3) {
@@ -712,6 +712,7 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
+    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -745,6 +746,7 @@ function declareWinner(flag) {
       return; 
     }
 
+    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     els.winnerHeading.innerText = "ROUND WINNER";
@@ -838,18 +840,16 @@ function renderLeaderboard() {
   els.qualifiedList.innerHTML = rowsHtml;
 }
 
-// 💥 সুপার-ইলাস্টিক নিখুঁত বাউন্স ফাংশন (কোনো আটকে যাওয়া বা থেমে যাওয়া ছাড়া)
+// 💥 সুপার-ইলাস্টিক নিখুঁত বাউন্স ফাংশন
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  // ঠিক পরিধির গায়ে অবস্থান নিশ্চিত করা
   f.x = arenaX + nx * (arenaR - f.r - 0.5);
   f.y = arenaY + ny * (arenaR - f.r - 0.5);
 
   let dot = (f.vx * nx) + (f.vy * ny);
   if (dot > 0) {
-    // 100% এনার্জি রিফ্লেকশন + হালকা ট্যানজেনশিয়াল স্প্রেড
     f.vx -= 2.02 * dot * nx;
     f.vy -= 2.02 * dot * ny;
     
@@ -872,7 +872,7 @@ function gameLoop() {
   ctx.clearRect(0, 0, viewWidth, viewHeight);
 
   // -------------------------------------------------------------
-  // ⚡ ১. ওয়ার্ম-আপ ফেজ
+  // ⚡ ১. ওয়ার্ম-আপ ফেজ (রাউন্ড শুরুর ঘোষণা টেক্সট প্রদর্শন)
   // -------------------------------------------------------------
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
@@ -931,13 +931,34 @@ function gameLoop() {
       }
     }
 
+    // 🎯 রিংয়ের মাঝে বড় করে রাউন্ড টেক্সট প্রদর্শন (ব্যাটল শুরু হলে অটো চলে যাবে)
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    let alpha = 1;
+    if (warmupElapsed > 1.8) {
+      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
+    }
+    ctx.globalAlpha = alpha;
+
+    ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.shadowBlur = 18;
+
+    ctx.font = "900 28px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+    
+    let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
+    ctx.fillText(roundBannerText, arenaX, arenaY);
+    ctx.restore();
+
     if (warmupElapsed >= warmupDuration) {
       isWarmup = false;
       startTime = Date.now();
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (৪০ - ৪৫ সেকেন্ডে স্বাভাবিক রাউন্ড, ৩ - ৩.৫ মিনিটে ফাইনাল)
+  // ⚔️ ২. মূল লড়াই ফেজ (৪০ - ৪৫ সেকেন্ডে সাধারণ রাউন্ড, ৩ - ৩.৫ মিনিটে ফাইনাল)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -949,12 +970,11 @@ function gameLoop() {
 
     updateRoundFooterInfo(elapsed);
 
-    // সেন্ট্রিফিউগাল পেসিং
     let targetDuration = isFinalRound ? 195.0 : 42.0;
     let timeRatio = Math.min(1, elapsed / targetDuration);
 
-    let outwardPush = 0.32 + Math.pow(timeRatio, 1.25) * 0.85;
-    let speedMult = 2.5 + timeRatio * 2.8;
+    let outwardPush = 0.30 + Math.pow(timeRatio, 1.2) * 0.85;
+    let speedMult = 2.4 + timeRatio * 2.8;
 
     let activeGapSize = baseGapSize;
     if (isFinalRound) {
@@ -978,16 +998,15 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    // 🎯 মসৃণ টাইম পেসিং ক্যালকুলেশন
+    // ⏱️ নিখুঁত পেসিং ক্যালকুলেটর
     let targetMaxAlive;
     if (elapsed < targetDuration) {
       let p = elapsed / targetDuration;
-      targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.12))));
+      targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.1))));
     } else {
       targetMaxAlive = 1;
     }
 
-    // ফ্ল্যাগ-টু-ফ্ল্যাগ সংঘর্ষ ও বাউন্স
     const len = activeFlags.length;
     const minDist = 20;
     const minDistSq = 400;
@@ -1049,19 +1068,18 @@ function gameLoop() {
         if (inGap) {
             let inYellow = isAngleBetween(fAngle, yStart, yEnd);
             if (inYellow) {
-                bounceFlag(f, dx, dy, dist); // নিয়ন আর্চে সলিড বাউন্স
+                bounceFlag(f, dx, dy, dist); 
             } else {
-                // খোলা মুখে কোনো বাধা নেই—ফ্ল্যাগ স্বাভাবিক গতিতে বাইরে বের হবে
                 if (activeFlags.length > targetMaxAlive) {
                     if (dist > arenaR + f.r + 2) {
-                        eliminate(f); // বাইরে বের হওয়া নিশ্চিত হলে এলিমিনেট
+                        eliminate(f); 
                     }
                 } else {
-                    bounceFlag(f, dx, dy, dist); // শেষ বিজয়ী ধরে রাখার জন্য বাউন্স
+                    bounceFlag(f, dx, dy, dist); 
                 }
             }
         } else {
-            bounceFlag(f, dx, dy, dist); // সাদা দেওয়ালে ফুল বাউন্স
+            bounceFlag(f, dx, dy, dist); 
         }
       }
     }
