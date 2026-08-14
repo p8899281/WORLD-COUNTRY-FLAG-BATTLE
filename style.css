@@ -203,9 +203,6 @@ body.pc-mode #app {
 .rank { color: var(--theme-green); width: 28px; }
 .win-count { color: var(--theme-yellow); }
 
-.arena-info { display: flex; justify-content: space-between; font-size: 11px; color: #8a9a90; font-weight: 700; padding: 0 6px; margin-bottom: 4px; }
-.qualifying-text { color: #ff5555; }
-
 .arena-container { 
   position: relative; 
   flex: 1; 
