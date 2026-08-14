@@ -26,10 +26,11 @@
       <h1 class="start-title">COUNTRY FLAGS BATTLE</h1>
       <div class="start-underline"></div>
       
-      <!-- 🔢 রাউন্ড সিলেক্টর (30, 60, 90, 120) -->
+      <!-- 🔢 রাউন্ড সিলেক্টর (15, 30, 60, 90, 120) -->
       <div class="rounds-selector-box">
         <div class="rounds-label">SELECT TOURNAMENT ROUNDS:</div>
         <div class="rounds-btn-group">
+          <button type="button" class="round-btn" onclick="setTournamentRounds(15, this)">15</button>
           <button type="button" class="round-btn" onclick="setTournamentRounds(30, this)">30</button>
           <button type="button" class="round-btn active" onclick="setTournamentRounds(60, this)">60</button>
           <button type="button" class="round-btn" onclick="setTournamentRounds(90, this)">90</button>
