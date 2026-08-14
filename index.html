@@ -19,13 +19,24 @@
     </div>
   </div>
 
-  <!-- Start Battle Screen with Fullscreen Option -->
+  <!-- Start Battle Screen with Fullscreen & Round Selector -->
   <div id="start-screen" class="overlay-screen hidden">
     <div class="start-box">
       <div class="start-flags-row">🇺🇸 🇧🇷 🇯🇵 🇫🇷 🇰🇷 🇩🇪 🇦🇷</div>
       <h1 class="start-title">COUNTRY FLAGS BATTLE</h1>
       <div class="start-underline"></div>
       
+      <!-- 🔢 রাউন্ড সিলেক্টর (30, 60, 90, 120) -->
+      <div class="rounds-selector-box">
+        <div class="rounds-label">SELECT TOURNAMENT ROUNDS:</div>
+        <div class="rounds-btn-group">
+          <button type="button" class="round-btn" onclick="setTournamentRounds(30, this)">30</button>
+          <button type="button" class="round-btn active" onclick="setTournamentRounds(60, this)">60</button>
+          <button type="button" class="round-btn" onclick="setTournamentRounds(90, this)">90</button>
+          <button type="button" class="round-btn" onclick="setTournamentRounds(120, this)">120</button>
+        </div>
+      </div>
+
       <label class="fullscreen-option">
         <input type="checkbox" id="fullscreenToggle" checked />
         <span>🖥️ Launch in Fullscreen</span>
@@ -53,7 +64,7 @@
       <!-- ⏱️ বোর্ডের নিচের প্রোগ্রেস ও রিভার্স কাউন্টডাউন বার -->
       <div class="board-footer">
         <span class="rounds-status" id="roundProgressText">ROUNDS: 1 / 60</span>
-        <span class="final-countdown" id="finalCountdownText">FINAL IN: 59 ROUNDS</span>
+        <span class="final-countdown" id="finalCountdownText">FINAL IN: 45:00</span>
       </div>
     </div>
 
