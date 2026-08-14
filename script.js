@@ -40,6 +40,8 @@ let startTime = 0;
 let roundDuration = 45; 
 
 let qualifiedTeams = [];
+let leaderboardPage = 0;
+let leaderboardInterval = null;
 
 // 🎵 AUDIO SYSTEM (MP3 Support + Web Audio Synth)
 let audioCtx = null;
@@ -216,7 +218,6 @@ function playSound(type, intensity = 1) {
   } catch (e) {}
 }
 
-// 📢 প্রতি ৩ রাউন্ড পর পর "Comment your country name" বলার লজিক
 function speakWinner(name, currentRound) {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
@@ -306,6 +307,7 @@ function beginBattle() {
   window.addEventListener("resize", resizeCanvas);
   
   initGame();
+  startLeaderboardAutoCycle(); // 🔄 অটো-রোটেশন চালু
   isPlaying = true;
   startBGM(); 
   requestAnimationFrame(gameLoop);
@@ -374,7 +376,7 @@ function initGame() {
     flags.push(flagObj);
   }
   activeFlags = [...flags];
-  updateLeaderboard();
+  renderLeaderboard();
 }
 
 function normalizeAngle(a) {
@@ -417,7 +419,7 @@ function declareWinner(flag) {
     if (!isPlaying) return;
     isPlaying = false;
     playSound("win");
-    speakWinner(flag.name, round); // 📢 রাউন্ড অনুযায়ী ভয়েস কল
+    speakWinner(flag.name, round);
     
     els.winnerOverlay.classList.remove("hidden");
     els.winnerFlagBox.innerText = flag.emoji;
@@ -443,25 +445,61 @@ function recordQualifier(flag) {
   } else {
     qualifiedTeams.push({ code: flag.code, name: flag.name, emoji: flag.emoji, wins: 1 });
   }
-  updateLeaderboard();
+  renderLeaderboard();
 }
 
-function updateLeaderboard() {
-    if (qualifiedTeams.length === 0) {
-        els.qualifiedList.innerHTML = `
-            <div class="board-row" style="justify-content:center; opacity:0.6;">
-                No qualifiers yet — finish a round!
-            </div>`;
-        return;
+// 🔄 ৫টি করে পেজ স্বয়ংক্রিয়ভাবে পরিবর্তনের টাইমার
+function startLeaderboardAutoCycle() {
+  if (leaderboardInterval) clearInterval(leaderboardInterval);
+  leaderboardInterval = setInterval(() => {
+    if (qualifiedTeams.length > 5) {
+      const totalPages = Math.ceil(qualifiedTeams.length / 5);
+      leaderboardPage = (leaderboardPage + 1) % totalPages;
+      renderLeaderboard();
+    } else {
+      leaderboardPage = 0;
     }
-    let sorted = [...qualifiedTeams].sort((a, b) => b.wins - a.wins);
-    els.qualifiedList.innerHTML = sorted.map((c, i) => `
-        <div class="board-row">
-            <span class="rank">#${i+1}</span>
-            <span>${c.emoji} ${c.name}</span>
-            <span class="win-count">${c.wins} win${c.wins > 1 ? 's' : ''}</span>
-        </div>
-    `).join("");
+  }, 3500); // ৩.৫ সেকেন্ড পর পর পেজ পরিবর্তন হবে
+}
+
+// 📋 ৫টি স্লটের পেজ রেন্ডারার (বাকি স্লট স্বয়ংক্রিয়ভাবে খালি থাকবে)
+function renderLeaderboard() {
+  if (qualifiedTeams.length === 0) {
+    let emptyHtml = `
+      <div class="board-row" style="justify-content:center; opacity:0.6;">
+          No qualifiers yet — finish a round!
+      </div>`;
+    for (let i = 1; i < 5; i++) {
+      emptyHtml += `<div class="board-row empty-row" style="visibility:hidden;">&nbsp;</div>`;
+    }
+    els.qualifiedList.innerHTML = emptyHtml;
+    return;
+  }
+
+  let sorted = [...qualifiedTeams].sort((a, b) => b.wins - a.wins);
+  const totalPages = Math.ceil(sorted.length / 5);
+  if (leaderboardPage >= totalPages) leaderboardPage = 0;
+
+  const startIdx = leaderboardPage * 5;
+  const pageItems = sorted.slice(startIdx, startIdx + 5);
+
+  let rowsHtml = pageItems.map((c, i) => {
+    const actualRank = startIdx + i + 1;
+    return `
+      <div class="board-row">
+          <span class="rank">#${actualRank}</span>
+          <span class="country-name">${c.emoji} ${c.name}</span>
+          <span class="win-count">${c.wins} win${c.wins > 1 ? 's' : ''}</span>
+      </div>
+    `;
+  }).join("");
+
+  // 🎯 ৫টির মধ্যে বাকি থাকা স্লটগুলো খালি রাখা (যেমন: ৭টির মধ্যে ২য় পেজে ৩টি খালি থাকবে)
+  for (let k = pageItems.length; k < 5; k++) {
+    rowsHtml += `<div class="board-row empty-row" style="visibility:hidden;">&nbsp;</div>`;
+  }
+
+  els.qualifiedList.innerHTML = rowsHtml;
 }
 
 function bounceFlag(f, dx, dy, dist) {
