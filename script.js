@@ -28,7 +28,12 @@ const els = {
   qualifiedList: document.getElementById("qualifiedList"),
   roundProgressText: document.getElementById("roundProgressText"),
   finalCountdownText: document.getElementById("finalCountdownText"),
-  timerText: document.getElementById("timerText")
+  timerText: document.getElementById("timerText"),
+  bgmSelect: document.getElementById("bgmSelect"),
+  customMusicInputWrapper: document.getElementById("customMusicInputWrapper"),
+  customBgmUrl: document.getElementById("customBgmUrl"),
+  volumeSlider: document.getElementById("volumeSlider"),
+  volumeValueText: document.getElementById("volumeValueText")
 };
 
 let TOTAL_FLAGS = 193; 
@@ -82,33 +87,46 @@ function setTournamentRounds(num, btnElement) {
   }
 }
 
-// 🎉 কনফেটি ও নকআউট টাইমার হ্যান্ডলার
-let confettiParticles = [];
-let confettiAnimationId = null;
-let knockoutTimeout = null;
-
-let isWarmup = true;
-let warmupStartTime = 0;
-const warmupDuration = 2.5;
-
-let startTime = 0;
-let roundDuration = 45; 
-
-let qualifiedTeams = [];
-let leaderboardPage = 0;
-let leaderboardInterval = null;
-
-// 🎵 AUDIO SYSTEM
+// 🎵 AUDIO SYSTEM (BGM Selector, Volume & GitHub Direct Link Support)
 let audioCtx = null;
 let lastSoundTime = 0;
+let masterVolume = 0.7;
 
-const customBgm = new Audio('bgm.mp3');
-customBgm.loop = true;
-let useCustomBgm = false;
+// ডিফল্ট অনলাইন মিউজিক ট্র্যাক
+const defaultTracks = {
+  arcade: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3',
+  cyber: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
+  epic: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_88447e769f.mp3'
+};
 
-customBgm.addEventListener('canplaythrough', () => {
-  useCustomBgm = true;
-});
+const customAudioPlayer = new Audio();
+customAudioPlayer.loop = true;
+let isAudioPlaying = false;
+
+// GitHub URL কনভার্টার (blob লিঙ্ক দিলে স্বয়ংক্রিয়ভাবে raw.githubusercontent-এ পরিবর্তন করবে)
+function formatDirectUrl(url) {
+  if (!url) return '';
+  let cleanUrl = url.trim();
+  if (cleanUrl.includes('github.com') && cleanUrl.includes('/blob/')) {
+    cleanUrl = cleanUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+  }
+  return cleanUrl;
+}
+
+function handleBgmSelectChange() {
+  const selected = els.bgmSelect.value;
+  if (selected === 'custom') {
+    els.customMusicInputWrapper.classList.remove('hidden');
+  } else {
+    els.customMusicInputWrapper.classList.add('hidden');
+  }
+}
+
+function changeVolume(val) {
+  masterVolume = parseFloat(val);
+  customAudioPlayer.volume = masterVolume;
+  els.volumeValueText.innerText = `${Math.round(masterVolume * 100)}%`;
+}
 
 let bgmInterval = null;
 let bgmStep = 0;
@@ -151,61 +169,73 @@ async function requestDeviceFullscreen() {
 
 function startBGM() {
   stopBGM();
-  
-  if (useCustomBgm) {
-    customBgm.currentTime = 0;
-    customBgm.volume = 0.65;
-    customBgm.play().catch(() => {});
-    return;
-  }
+  const selectedType = els.bgmSelect.value;
 
-  bgmStep = 0;
-  bgmInterval = setInterval(() => {
-    if (!audioCtx || !isPlaying) return;
-    try {
-      const now = audioCtx.currentTime;
+  if (selectedType === 'synth') {
+    // সিন্থেসাইজার বিট চলবে
+    bgmStep = 0;
+    bgmInterval = setInterval(() => {
+      if (!audioCtx || !isPlaying) return;
+      try {
+        const now = audioCtx.currentTime;
 
-      const pluckOsc = audioCtx.createOscillator();
-      const pluckGain = audioCtx.createGain();
-      const freq = marimbaNotes[bgmStep % marimbaNotes.length];
+        const pluckOsc = audioCtx.createOscillator();
+        const pluckGain = audioCtx.createGain();
+        const freq = marimbaNotes[bgmStep % marimbaNotes.length];
 
-      pluckOsc.type = "sine";
-      pluckOsc.frequency.setValueAtTime(freq, now);
+        pluckOsc.type = "sine";
+        pluckOsc.frequency.setValueAtTime(freq, now);
 
-      pluckGain.gain.setValueAtTime(0.045, now);
-      pluckGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+        pluckGain.gain.setValueAtTime(0.045 * masterVolume, now);
+        pluckGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
 
-      pluckOsc.connect(pluckGain);
-      pluckGain.connect(audioCtx.destination);
-      pluckOsc.start(now);
-      pluckOsc.stop(now + 0.13);
+        pluckOsc.connect(pluckGain);
+        pluckGain.connect(audioCtx.destination);
+        pluckOsc.start(now);
+        pluckOsc.stop(now + 0.13);
 
-      if (bgmStep % 2 === 0) {
-        const bassOsc = audioCtx.createOscillator();
-        const bassGain = audioCtx.createGain();
-        const bassFreq = bassRoots[Math.floor(bgmStep / 2) % bassRoots.length];
+        if (bgmStep % 2 === 0) {
+          const bassOsc = audioCtx.createOscillator();
+          const bassGain = audioCtx.createGain();
+          const bassFreq = bassRoots[Math.floor(bgmStep / 2) % bassRoots.length];
 
-        bassOsc.type = "triangle";
-        bassOsc.frequency.setValueAtTime(bassFreq, now);
+          bassOsc.type = "triangle";
+          bassOsc.frequency.setValueAtTime(bassFreq, now);
 
-        bassGain.gain.setValueAtTime(0.05, now);
-        bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+          bassGain.gain.setValueAtTime(0.05 * masterVolume, now);
+          bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
 
-        bassOsc.connect(bassGain);
-        bassGain.connect(audioCtx.destination);
-        bassOsc.start(now);
-        bassOsc.stop(now + 0.23);
+          bassOsc.connect(bassGain);
+          bassGain.connect(audioCtx.destination);
+          bassOsc.start(now);
+          bassOsc.stop(now + 0.23);
+        }
+
+        bgmStep++;
+      } catch (e) {}
+    }, 135);
+  } else {
+    // অডিও লিঙ্ক প্লেয়ার
+    let targetSrc = '';
+    if (selectedType === 'custom') {
+      targetSrc = formatDirectUrl(els.customBgmUrl.value);
+    } else if (defaultTracks[selectedType]) {
+      targetSrc = defaultTracks[selectedType];
+    }
+
+    if (targetSrc) {
+      if (customAudioPlayer.src !== targetSrc) {
+        customAudioPlayer.src = targetSrc;
       }
-
-      bgmStep++;
-    } catch (e) {}
-  }, 135);
+      customAudioPlayer.volume = masterVolume;
+      customAudioPlayer.currentTime = 0;
+      customAudioPlayer.play().catch(() => {});
+    }
+  }
 }
 
 function stopBGM() {
-  if (useCustomBgm) {
-    customBgm.pause();
-  }
+  customAudioPlayer.pause();
   if (bgmInterval) {
     clearInterval(bgmInterval);
     bgmInterval = null;
@@ -234,7 +264,7 @@ function playSound(type, intensity = 1) {
       osc.frequency.setValueAtTime(pitch, now);
       osc.frequency.exponentialRampToValueAtTime(120, now + 0.035);
       
-      const vol = Math.min(0.18, 0.08 + intensity * 0.03);
+      const vol = Math.min(0.20, (0.08 + intensity * 0.03) * masterVolume);
       gain.gain.setValueAtTime(vol, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
       
@@ -252,7 +282,7 @@ function playSound(type, intensity = 1) {
       osc.frequency.exponentialRampToValueAtTime(650, now + 0.04);
       osc.frequency.exponentialRampToValueAtTime(140, now + 0.12);
       
-      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.setValueAtTime(0.12 * masterVolume, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
       
       osc.connect(gain);
@@ -270,8 +300,8 @@ function playSound(type, intensity = 1) {
         osc.type = "triangle";
         osc.frequency.setValueAtTime(freq, now + idx * 0.10);
         
-        gain.gain.setValueAtTime(0.01, now + idx * 0.10);
-        gain.gain.exponentialRampToValueAtTime(0.20, now + idx * 0.10 + 0.04);
+        gain.gain.setValueAtTime(0.01 * masterVolume, now + idx * 0.10);
+        gain.gain.exponentialRampToValueAtTime(0.20 * masterVolume, now + idx * 0.10 + 0.04);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.10 + 1.8);
         
         osc.connect(gain);
@@ -289,8 +319,8 @@ function playSound(type, intensity = 1) {
         osc.type = "triangle";
         osc.frequency.setValueAtTime(freq, now + idx * 0.08);
         
-        gain.gain.setValueAtTime(0.01, now + idx * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.28, now + idx * 0.08 + 0.05);
+        gain.gain.setValueAtTime(0.01 * masterVolume, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.28 * masterVolume, now + idx * 0.08 + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 2.5);
         
         osc.connect(gain);
@@ -308,6 +338,7 @@ function speakText(text) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
+    utterance.volume = masterVolume;
     utterance.lang = "en-US";
     window.speechSynthesis.speak(utterance);
   }
@@ -1140,7 +1171,7 @@ function gameLoop() {
       ctx.fillText(f.emoji, f.x, f.y);
   }
 
-  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট (সব পতাকার ওপরে ফ্রস্টেড ডার্ক ব্যাজসহ)
+  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট (সব পতাকার সবার ওপরে ফ্রস্টেড ডার্ক ব্যাজসহ)
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
     let alpha = 1;
@@ -1158,7 +1189,7 @@ function gameLoop() {
     let bgHeight = 46;
 
     // ব্যাকগ্রাউন্ড ফ্রস্টেড ডার্ক পিল
-    ctx.fillStyle = "rgba(3, 8, 20, 0.90)";
+    ctx.fillStyle = "rgba(3, 8, 20, 0.92)";
     ctx.strokeStyle = isFinalRound ? "#00d2ff" : "#ffd700";
     ctx.lineWidth = 2;
     ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
