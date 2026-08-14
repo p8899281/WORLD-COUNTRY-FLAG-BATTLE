@@ -49,6 +49,7 @@ let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
 let dpr = 1;
 let isPlaying = false;
+let selectedDeviceMode = 'mobile';
 
 // 📱 SCREEN WAKE LOCK
 let wakeLock = null;
@@ -127,15 +128,26 @@ function unlockAudio() {
   }
 }
 
-function requestFullscreen() {
+async function requestDeviceFullscreen() {
   const docEl = document.documentElement;
-  if (docEl.requestFullscreen) {
-    docEl.requestFullscreen().catch(() => {});
-  } else if (docEl.webkitRequestFullscreen) {
-    docEl.webkitRequestFullscreen();
-  } else if (docEl.msRequestFullscreen) {
-    docEl.msRequestFullscreen();
-  }
+  try {
+    if (docEl.requestFullscreen) {
+      await docEl.requestFullscreen();
+    } else if (docEl.webkitRequestFullscreen) {
+      await docEl.webkitRequestFullscreen();
+    } else if (docEl.msRequestFullscreen) {
+      await docEl.msRequestFullscreen();
+    }
+
+    // স্ক্রিন অরিয়েন্টেশন লকিং (Portrait for Mobile, Landscape for Tablet)
+    if (screen.orientation && screen.orientation.lock) {
+      if (selectedDeviceMode === 'mobile') {
+        screen.orientation.lock('portrait').catch(() => {});
+      } else if (selectedDeviceMode === 'tablet') {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    }
+  } catch (e) {}
 }
 
 function startBGM() {
@@ -370,6 +382,7 @@ const countryList = countryData.map(([code, name]) => [code, name, codeToFlagEmo
 TOTAL_FLAGS = countryList.length;
 
 function selectMode(mode) {
+  selectedDeviceMode = mode;
   document.body.classList.remove('mobile-mode', 'tablet-mode', 'pc-mode');
   document.body.classList.add(mode + '-mode');
   els.modeSelector.classList.add("hidden");
@@ -382,7 +395,7 @@ function beginBattle() {
 
   const fsToggle = document.getElementById("fullscreenToggle");
   if (fsToggle && fsToggle.checked) {
-    requestFullscreen();
+    requestDeviceFullscreen();
   }
 
   els.startScreen.classList.add("hidden");
@@ -602,7 +615,6 @@ function eliminate(flag) {
 
   deadFlags.push(flag); 
   
-  // 🎙️ ফাইনাল রাউন্ডে পোডিয়াম ট্র্যাকিং ও নকআউট বিরতি
   if (isFinalRound) {
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
@@ -697,7 +709,6 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী (15, 30, 60, 90, 120 সব রাউন্ডেই চলবে)
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -731,7 +742,6 @@ function declareWinner(flag) {
       return; 
     }
 
-    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     els.winnerHeading.innerText = "ROUND WINNER";
@@ -749,7 +759,6 @@ function declareWinner(flag) {
     setTimeout(() => {
         els.winnerOverlay.classList.add("hidden");
         
-        // নির্বাচিত রাউন্ড পূর্ণ হলে ফাইনাল রাউন্ডে স্থানান্তর
         if (round >= MAX_QUALIFYING_ROUNDS) {
           isFinalRound = true;
         } else {
