@@ -168,6 +168,19 @@ function playSound(type, intensity = 1) {
   } catch (e) {}
 }
 
+// 🔊 রাউন্ড নাম্বার বলার ভয়েস ফাংশন
+function speakRound(roundNum) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance("Round " + roundNum);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.lang = "en-US";
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+// 🔊 উইনার ঘোষণা করার ভয়েস ফাংশন
 function speakWinner(name) {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
@@ -251,6 +264,7 @@ function beginBattle() {
   window.addEventListener("resize", resizeCanvas);
   
   initGame();
+  speakRound(round); // 📢 রাউন্ড ১ ঘোষণা
   isPlaying = true;
   startBGM(); 
   requestAnimationFrame(gameLoop);
@@ -289,7 +303,6 @@ function resizeCanvas() {
   });
 }
 
-// 🎯 রিংয়ের ভেতরে সম্পূর্ণ গোল আকারে সমানভাবে ছড়িয়ে শুরু হওয়ার লজিক
 function initGame() {
   flags = [];
   deadFlags = [];
@@ -298,12 +311,11 @@ function initGame() {
   for (let i = 0; i < TOTAL_FLAGS; i++) {
     let country = countryList[i];
     
-    // পোলার কোঅর্ডিনেটে গোল ডিস্কের ভেতর সুষমভাবে সাজানো
     let spawnAngle = Math.random() * Math.PI * 2;
     let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.82);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 9 + Math.random() * 6; // ⚡ ৫ গুণ দ্রুত প্রারম্ভিক স্পিড
+    let speed = 9 + Math.random() * 6;
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -372,6 +384,7 @@ function declareWinner(flag) {
         round++;
         document.getElementById("roundText").innerText = round;
         initGame();
+        speakRound(round); // 📢 পরবর্তী রাউন্ডের নাম্বার ঘোষণা
         isPlaying = true;
         startBGM(); 
         requestAnimationFrame(gameLoop);
@@ -406,7 +419,6 @@ function updateLeaderboard() {
     `).join("");
 }
 
-// ⚡ সুপার ফাস্ট এবং হাই-এনার্জি রিং বাউন্স
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
@@ -419,7 +431,6 @@ function bounceFlag(f, dx, dy, dist) {
     f.vx -= 2.05 * dot * nx;
     f.vy -= 2.05 * dot * ny;
     
-    // গতি নিশ্চিত রাখা
     let curSpeed = Math.hypot(f.vx, f.vy);
     if (curSpeed < 8) {
       let scale = 8 / (curSpeed || 1);
@@ -450,7 +461,6 @@ function gameLoop() {
   let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.72))));
   let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
   
-  // ⚡ ৫ গুণ তীব্র গতি
   let speedMult = (2.6 + Math.pow(progress, 1.4) * 4.8) * pressureMult; 
 
   let activeGapSize = (timeLeft <= 5 && activeFlags.length > 1) 
@@ -468,7 +478,6 @@ function gameLoop() {
   let yStart = yellowAngle;
   let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-  // ফ্ল্যাগ টু ফ্ল্যাগ কলিশন
   const len = activeFlags.length;
   for (let i = 0; i < len; i++) {
     let f1 = activeFlags[i];
@@ -559,7 +568,7 @@ function gameLoop() {
   ctx.strokeStyle = "#00d2ff";
   ctx.stroke();
 
-  // 🟡 ৩. গোল্ডেন ইয়োলো হরাইজন্টাল লাইন ও সাদা ব্যাকগ্রাউন্ড শ্যাডো
+  // 🟡 ৩. গোল্ডেন প্রোগ্রেস লাইন ও সাদা ব্যাকগ্রাউন্ড
   let flagRatio = activeFlags.length / TOTAL_FLAGS;
   let fullLineWidth = arenaR * 1.7; 
   let lineStartX = arenaX - (fullLineWidth / 2); 
@@ -575,7 +584,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // (B) গোল্ডেন ইয়োলো প্রোগ্রেস লাইন
+  // (B) গোল্ডেন লাইন
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
   ctx.lineTo(lineStartX + currentLineWidth, lineY);
@@ -584,7 +593,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. লাইনের নিচে সাদা টেক্সট
+  // 🏷️ ৪. লাইনের নিচে সাদা কাউন্ট টেক্সট
   ctx.font = "bold 13px sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
