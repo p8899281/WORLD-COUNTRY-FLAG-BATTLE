@@ -293,7 +293,6 @@ function resizeCanvas() {
   });
 }
 
-// 🎯 রিংয়ের কেন্দ্রভাগে সুরক্ষিতভাবে স্পন করা
 function initGame() {
   flags = [];
   deadFlags = [];
@@ -304,12 +303,11 @@ function initGame() {
   for (let i = 0; i < TOTAL_FLAGS; i++) {
     let country = countryList[i];
     
-    // ৬০% রেডিয়াসের ভেতর স্পন করা হচ্ছে যেন কোনো অবস্থাতেই রিংয়ের বাইরে না যায়
     let spawnAngle = Math.random() * Math.PI * 2;
     let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.60);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 10 + Math.random() * 6;
+    let speed = 9 + Math.random() * 5;
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -412,31 +410,39 @@ function updateLeaderboard() {
     `).join("");
 }
 
-// ⚡ নিখুঁত রিং বাউন্স এবং পজিশন ক্ল্যাম্পিং (কখনোই বাইরে যাবে না)
+// ⚡ সুপার-ক্লিন বাউন্স ফিজিক্স (দেওয়ালে কখনোই চিপকে থাকবে না)
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  // পজিশন বাধ্যতামূলকভাবে রিংয়ের ভেতরে লক করা
-  f.x = arenaX + nx * (arenaR - f.r);
-  f.y = arenaY + ny * (arenaR - f.r);
+  // পতাকাকে দেয়াল থেকে ৩ পিক্সেল ভেতরের দিকে পুশ করা
+  f.x = arenaX + nx * (arenaR - f.r - 3);
+  f.y = arenaY + ny * (arenaR - f.r - 3);
 
   let dot = (f.vx * nx) + (f.vy * ny);
-  if (dot > 0) {
-    f.vx -= 2.05 * dot * nx;
-    f.vy -= 2.05 * dot * ny;
+  
+  // যদি বাইরের দিকে যাচ্ছে বা আটকে থাকে, তাৎক্ষণিক শক্তিশালী রিফ্লেকশন
+  if (dot > -2) {
+    f.vx -= (dot * 2.15) * nx;
+    f.vy -= (dot * 2.15) * ny;
+    
+    // কেন্দ্রের দিকে সলিড ইনওয়ার্ড পুশ ও হালকা স্প্রেড
+    let tangX = -ny;
+    let tangY = nx;
+    let scatter = (Math.random() - 0.5) * 3.5;
+
+    f.vx += (-nx * 3.5) + (tangX * scatter);
+    f.vy += (-ny * 3.5) + (tangY * scatter);
     
     let curSpeed = Math.hypot(f.vx, f.vy);
-    if (curSpeed < 8) {
-      let scale = 8 / (curSpeed || 1);
+    if (curSpeed < 9) {
+      let scale = (9 + Math.random() * 3) / (curSpeed || 1);
       f.vx *= scale;
       f.vy *= scale;
     }
 
-    const speed = Math.abs(dot);
-    if (speed > 0.5) {
-      playSound("bounce", speed);
-    }
+    const speed = Math.abs(dot) + 1;
+    playSound("bounce", speed);
   }
 }
 
@@ -446,7 +452,7 @@ function gameLoop() {
   ctx.clearRect(0, 0, viewWidth, viewHeight);
 
   // -------------------------------------------------------------
-  // ⚡ ১. ওয়ার্ম-আপ ফেজ (রিং সম্পূর্ণ বন্ধ ও ভেতরে ভাইব্রেশন)
+  // ⚡ ১. ওয়ার্ম-আপ ফেজ (২.৫ সেকেন্ড ভেতর বাউন্স ও ভাইব্রেট)
   // -------------------------------------------------------------
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
@@ -460,6 +466,7 @@ function gameLoop() {
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
+    // বল-টু-বল সংঘর্ষ
     const len = activeFlags.length;
     for (let i = 0; i < len; i++) {
       let f1 = activeFlags[i];
@@ -474,10 +481,19 @@ function gameLoop() {
           let overlap = minDist - dist;
           let nx = dx / dist;
           let ny = dy / dist;
-          f1.x -= nx * overlap * 0.25;
-          f1.y -= ny * overlap * 0.25;
-          f2.x += nx * overlap * 0.25;
-          f2.y += ny * overlap * 0.25;
+          
+          f1.x -= nx * overlap * 0.5;
+          f1.y -= ny * overlap * 0.5;
+          f2.x += nx * overlap * 0.5;
+          f2.y += ny * overlap * 0.5;
+          
+          let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
+          if (vrel > 0) {
+            f1.vx -= vrel * nx;
+            f1.vy -= vrel * ny;
+            f2.vx += vrel * nx;
+            f2.vy += vrel * ny;
+          }
         }
       }
     }
@@ -504,7 +520,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (৪৫ সেকেন্ড কাউন্টডাউন ও এলিমিনেশন)
+  // ⚔️ ২. মূল লড়াই ফেজ (৪৫ সেকেন্ড কাউন্টডাউন)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -520,7 +536,7 @@ function gameLoop() {
     let targetCount = Math.max(1, Math.floor(TOTAL_FLAGS * (1 - Math.pow(progress, 0.72))));
     let pressureMult = activeFlags.length > targetCount ? 1.0 + (activeFlags.length - targetCount) * 0.08 : 1.0;
     
-    let speedMult = (2.6 + Math.pow(progress, 1.4) * 4.8) * pressureMult; 
+    let speedMult = (2.4 + Math.pow(progress, 1.4) * 4.5) * pressureMult; 
 
     let activeGapSize = (timeLeft <= 5 && activeFlags.length > 1) 
       ? gapSize * (1 + (5 - timeLeft) * 0.45) 
@@ -535,6 +551,7 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
+    // বল-টু-বল ইলাস্টিক সংঘর্ষ
     const len = activeFlags.length;
     for (let i = 0; i < len; i++) {
       let f1 = activeFlags[i];
@@ -550,17 +567,17 @@ function gameLoop() {
           let nx = dx / dist;
           let ny = dy / dist;
           
-          f1.x -= nx * overlap * 0.3;
-          f1.y -= ny * overlap * 0.3;
-          f2.x += nx * overlap * 0.3;
-          f2.y += ny * overlap * 0.3;
+          f1.x -= nx * overlap * 0.5;
+          f1.y -= ny * overlap * 0.5;
+          f2.x += nx * overlap * 0.5;
+          f2.y += ny * overlap * 0.5;
           
-          let p = (f1.vx * nx + f1.vy * ny - (f2.vx * nx + f2.vy * ny));
-          if (p < 0) {
-            f1.vx -= p * nx;
-            f1.vy -= p * ny;
-            f2.vx += p * nx;
-            f2.vy += p * ny;
+          let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
+          if (vrel > 0) {
+            f1.vx -= vrel * nx;
+            f1.vy -= vrel * ny;
+            f2.vx += vrel * nx;
+            f2.vy += vrel * ny;
           }
         }
       }
@@ -572,8 +589,8 @@ function gameLoop() {
       let dist = Math.hypot(dx, dy) || 1;
       
       if (dist < arenaR * 0.65) {
-          f.vx += (dx / dist) * 0.25 * pressureMult;
-          f.vy += (dy / dist) * 0.25 * pressureMult;
+          f.vx += (dx / dist) * 0.22 * pressureMult;
+          f.vy += (dy / dist) * 0.22 * pressureMult;
       }
 
       f.x += f.vx * (speedMult * 0.28);
@@ -588,7 +605,7 @@ function gameLoop() {
             if (inYellow) {
                 bounceFlag(f, dx, dy, dist); 
             } else {
-                if (dist > arenaR + 5) { eliminate(f); }
+                if (dist > arenaR + 4) { eliminate(f); }
             }
         } else {
             bounceFlag(f, dx, dy, dist);
@@ -652,7 +669,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. লাইনের নিচে সাদা টেক্সট
+  // 🏷️ ৪. লাইনের নিচে সাদা কাউন্ট টেক্সট
   ctx.font = "bold 13px sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
