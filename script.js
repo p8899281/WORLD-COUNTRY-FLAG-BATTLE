@@ -41,11 +41,10 @@ let roundDuration = 45;
 
 let qualifiedTeams = [];
 
-// 🎵 AUDIO SYSTEM (MP3 File Support + Web Audio Synthesizer)
+// 🎵 AUDIO SYSTEM (MP3 Support + Web Audio Synth)
 let audioCtx = null;
 let lastSoundTime = 0;
 
-// তোমার MP3 ফাইলটি ফোল্ডারে থাকলে সরাসরি এটি বাজবে
 const customBgm = new Audio('bgm.mp3');
 customBgm.loop = true;
 let useCustomBgm = false;
@@ -57,7 +56,6 @@ customBgm.addEventListener('canplaythrough', () => {
 let bgmInterval = null;
 let bgmStep = 0;
 
-// 🎶 Marimba / Kalimba Pluck Melody Notes (অডিওর রিদমিক স্টাইল অনুযায়ী)
 const marimbaNotes = [
   523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 659.25,
   587.33, 698.46, 880.00, 1174.66, 880.00, 698.46, 783.99, 659.25
@@ -84,7 +82,6 @@ function requestFullscreen() {
   }
 }
 
-// 🎵 BGM হ্যান্ডলার (MP3 লোড হলে MP3 চলবে, না হলে প্রসিডিউরাল মারিম্বা বিট চলবে)
 function startBGM() {
   stopBGM();
   
@@ -101,7 +98,6 @@ function startBGM() {
     try {
       const now = audioCtx.currentTime;
 
-      // 1. Marimba / Wooden Pluck Synth
       const pluckOsc = audioCtx.createOscillator();
       const pluckGain = audioCtx.createGain();
       const freq = marimbaNotes[bgmStep % marimbaNotes.length];
@@ -117,7 +113,6 @@ function startBGM() {
       pluckOsc.start(now);
       pluckOsc.stop(now + 0.13);
 
-      // 2. Bouncy Warm Bass
       if (bgmStep % 2 === 0) {
         const bassOsc = audioCtx.createOscillator();
         const bassGain = audioCtx.createGain();
@@ -137,7 +132,7 @@ function startBGM() {
 
       bgmStep++;
     } catch (e) {}
-  }, 135); // 135ms ফাস্ট ও ক্যাচি টেম্পো
+  }, 135);
 }
 
 function stopBGM() {
@@ -150,7 +145,6 @@ function stopBGM() {
   }
 }
 
-// 💥 স্যাটিস্ফাইং ASMR Woodblock / Bubble Pop বাউন্স সাউন্ড
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -164,7 +158,6 @@ function playSound(type, intensity = 1) {
       if (nowTime - lastSoundTime < 22) return;
       lastSoundTime = nowTime;
 
-      // Woodblock / Pop Transient
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
@@ -311,18 +304,22 @@ function beginBattle() {
   requestAnimationFrame(gameLoop);
 }
 
+// 🖥️ আল্ট্রা শার্প ক্রিস্প ডিসপ্লে হ্যান্ডলার
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   viewWidth = rect.width;
   viewHeight = rect.height;
   
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  dpr = Math.max(window.devicePixelRatio || 1, 2);
   
-  canvas.width = viewWidth * dpr;
-  canvas.height = viewHeight * dpr;
+  canvas.width = Math.floor(viewWidth * dpr);
+  canvas.height = Math.floor(viewHeight * dpr);
   
   ctx.resetTransform();
   ctx.scale(dpr, dpr);
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   arenaX = viewWidth / 2;
   arenaY = viewHeight / 2 - 35;
@@ -492,11 +489,10 @@ function gameLoop() {
   ctx.clearRect(0, 0, viewWidth, viewHeight);
 
   // -------------------------------------------------------------
-  // ⚡ ১. ওয়ার্ম-আপ ফেজ (২.৫ সেকেন্ড ভেতর বাউন্স ও ভাইব্রেট)
+  // ⚡ ১. ওয়ার্ম-আপ ফেজ
   // -------------------------------------------------------------
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
-    
     els.timerText.innerText = `00:45`;
 
     ctx.beginPath();
@@ -505,16 +501,22 @@ function gameLoop() {
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
+    // 🚀 হাই-স্পিড অপ্টিমাইজড সংঘর্ষ (০ ল্যাগ)
     const len = activeFlags.length;
+    const minDist = 20;
+    const minDistSq = 400;
+
     for (let i = 0; i < len; i++) {
       let f1 = activeFlags[i];
       for (let j = i + 1; j < len; j++) {
         let f2 = activeFlags[j];
         let dx = f2.x - f1.x;
+        if (dx > minDist || dx < -minDist) continue;
         let dy = f2.y - f1.y;
+        if (dy > minDist || dy < -minDist) continue;
+
         let distSq = dx * dx + dy * dy;
-        let minDist = f1.r + f2.r;
-        if (distSq < minDist * minDist && distSq > 0.0001) {
+        if (distSq < minDistSq && distSq > 0.0001) {
           let dist = Math.sqrt(distSq);
           let overlap = minDist - dist;
           let nx = dx / dist;
@@ -550,7 +552,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (৪৫ সেকেন্ড কাউন্টডাউন)
+  // ⚔️ ২. মূল লড়াই ফেজ
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -580,16 +582,22 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
+    // 🚀 হাই-স্পিড অপ্টিমাইজড সংঘর্ষ লজিক (Early Box Culling)
     const len = activeFlags.length;
+    const minDist = 20;
+    const minDistSq = 400;
+
     for (let i = 0; i < len; i++) {
       let f1 = activeFlags[i];
       for (let j = i + 1; j < len; j++) {
         let f2 = activeFlags[j];
         let dx = f2.x - f1.x;
+        if (dx > minDist || dx < -minDist) continue;
         let dy = f2.y - f1.y;
+        if (dy > minDist || dy < -minDist) continue;
+
         let distSq = dx * dx + dy * dy;
-        let minDist = f1.r + f2.r;
-        if (distSq < minDist * minDist && distSq > 0.0001) {
+        if (distSq < minDistSq && distSq > 0.0001) {
           let dist = Math.sqrt(distSq);
           let overlap = minDist - dist;
           let nx = dx / dist;
@@ -703,24 +711,24 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. লাইনের নিচে সাদা টেক্সট
-  ctx.font = "bold 13px sans-serif";
+  // 🏷️ ৪. আল্ট্রা-শার্প সাদা টেক্সট
+  ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 10);
 
-  // HD Font Rendering
+  // 🎨 আল্ট্রা এইচডি শার্প ইমোজি ফন্ট রেন্ডারিং
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   
-  ctx.font = "15px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.font = "16px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
   ctx.globalAlpha = 0.85; 
   for (let f of deadFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
   }
 
-  ctx.font = "22px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+  ctx.font = "23px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
   ctx.globalAlpha = 1.0;
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
