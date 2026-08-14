@@ -87,7 +87,7 @@ function setTournamentRounds(num, btnElement) {
   }
 }
 
-// 🎉 কনফেটি ও নকআউট টাইমার হ্যান্ডলার (একবার ডিক্লেয়ার করা হয়েছে)
+// 🎉 কনফেটি ও টাইমার হ্যান্ডলার
 let confettiParticles = [];
 let confettiAnimationId = null;
 let knockoutTimeout = null;
@@ -103,16 +103,10 @@ let qualifiedTeams = [];
 let leaderboardPage = 0;
 let leaderboardInterval = null;
 
-// 🎵 AUDIO SYSTEM
+// 🎵 AUDIO SYSTEM (৪টি রিয়েল-টাইম মিউজিক জেনারেটর + কাস্টম প্লেয়ার)
 let audioCtx = null;
 let lastSoundTime = 0;
 let masterVolume = 0.7;
-
-const defaultTracks = {
-  arcade: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3',
-  cyber: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
-  epic: 'https://cdn.pixabay.com/download/audio/2021/08/09/audio_88447e769f.mp3'
-};
 
 const customAudioPlayer = new Audio();
 customAudioPlayer.loop = true;
@@ -135,6 +129,9 @@ function handleBgmSelectChange() {
       els.customMusicInputWrapper.classList.add('hidden');
     }
   }
+  if (isPlaying) {
+    startBGM();
+  }
 }
 
 function changeVolume(val) {
@@ -148,11 +145,33 @@ function changeVolume(val) {
 let bgmInterval = null;
 let bgmStep = 0;
 
-const marimbaNotes = [
-  523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 659.25,
-  587.33, 698.46, 880.00, 1174.66, 880.00, 698.46, 783.99, 659.25
-];
-const bassRoots = [261.63, 261.63, 220.00, 220.00, 174.61, 174.61, 196.00, 196.00];
+// ৪টি স্বতন্ত্র মিউজিক ট্র‍্যাক নোটস
+const musicTracks = {
+  synth: {
+    notes: [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 659.25, 587.33, 698.46, 880.00, 1174.66, 880.00, 698.46, 783.99, 659.25],
+    bass: [261.63, 261.63, 220.00, 220.00, 174.61, 174.61, 196.00, 196.00],
+    speed: 135,
+    type: "sine"
+  },
+  arcade: {
+    notes: [330, 392, 659, 523, 587, 784, 440, 523, 330, 392, 523, 659, 440, 587, 494, 392],
+    bass: [110, 130.81, 146.83, 164.81],
+    speed: 110,
+    type: "square"
+  },
+  cyber: {
+    notes: [220, 261.63, 293.66, 349.23, 440, 349.23, 293.66, 261.63],
+    bass: [55, 55, 65.41, 73.42, 87.31, 73.42, 65.41, 55],
+    speed: 120,
+    type: "sawtooth"
+  },
+  epic: {
+    notes: [440, 440, 523.25, 587.33, 659.25, 587.33, 523.25, 392.00, 440, 440, 659.25, 783.99, 880.00, 783.99, 659.25, 523.25],
+    bass: [110, 110, 130.81, 146.83, 164.81, 146.83, 130.81, 98],
+    speed: 140,
+    type: "triangle"
+  }
+};
 
 function unlockAudio() {
   try {
@@ -190,32 +209,43 @@ function startBGM() {
   stopBGM();
   const selectedType = els.bgmSelect ? els.bgmSelect.value : 'synth';
 
-  if (selectedType === 'synth') {
+  if (selectedType === 'custom') {
+    let targetSrc = els.customBgmUrl ? formatDirectUrl(els.customBgmUrl.value) : '';
+    if (targetSrc) {
+      customAudioPlayer.src = targetSrc;
+      customAudioPlayer.volume = masterVolume;
+      customAudioPlayer.currentTime = 0;
+      customAudioPlayer.play().catch(() => {});
+    }
+  } else {
+    const track = musicTracks[selectedType] || musicTracks.synth;
     bgmStep = 0;
+    
     bgmInterval = setInterval(() => {
       if (!audioCtx || !isPlaying) return;
       try {
         const now = audioCtx.currentTime;
 
-        const pluckOsc = audioCtx.createOscillator();
-        const pluckGain = audioCtx.createGain();
-        const freq = marimbaNotes[bgmStep % marimbaNotes.length];
+        const melodyOsc = audioCtx.createOscillator();
+        const melodyGain = audioCtx.createGain();
+        const freq = track.notes[bgmStep % track.notes.length];
 
-        pluckOsc.type = "sine";
-        pluckOsc.frequency.setValueAtTime(freq, now);
+        melodyOsc.type = track.type;
+        melodyOsc.frequency.setValueAtTime(freq, now);
 
-        pluckGain.gain.setValueAtTime(0.045 * masterVolume, now);
-        pluckGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+        const melVol = (track.type === "square" || track.type === "sawtooth") ? 0.025 : 0.045;
+        melodyGain.gain.setValueAtTime(melVol * masterVolume, now);
+        melodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
 
-        pluckOsc.connect(pluckGain);
-        pluckGain.connect(audioCtx.destination);
-        pluckOsc.start(now);
-        pluckOsc.stop(now + 0.13);
+        melodyOsc.connect(melodyGain);
+        melodyGain.connect(audioCtx.destination);
+        melodyOsc.start(now);
+        melodyOsc.stop(now + 0.13);
 
         if (bgmStep % 2 === 0) {
           const bassOsc = audioCtx.createOscillator();
           const bassGain = audioCtx.createGain();
-          const bassFreq = bassRoots[Math.floor(bgmStep / 2) % bassRoots.length];
+          const bassFreq = track.bass[Math.floor(bgmStep / 2) % track.bass.length];
 
           bassOsc.type = "triangle";
           bassOsc.frequency.setValueAtTime(bassFreq, now);
@@ -231,23 +261,7 @@ function startBGM() {
 
         bgmStep++;
       } catch (e) {}
-    }, 135);
-  } else {
-    let targetSrc = '';
-    if (selectedType === 'custom' && els.customBgmUrl) {
-      targetSrc = formatDirectUrl(els.customBgmUrl.value);
-    } else if (defaultTracks[selectedType]) {
-      targetSrc = defaultTracks[selectedType];
-    }
-
-    if (targetSrc) {
-      if (customAudioPlayer.src !== targetSrc) {
-        customAudioPlayer.src = targetSrc;
-      }
-      customAudioPlayer.volume = masterVolume;
-      customAudioPlayer.currentTime = 0;
-      customAudioPlayer.play().catch(() => {});
-    }
+    }, track.speed);
   }
 }
 
@@ -261,6 +275,7 @@ function stopBGM() {
   }
 }
 
+// 💥 শুধু রিংয়ে ধাক্কা খেলেই সাউন্ড বাজবে
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
@@ -916,7 +931,7 @@ function renderLeaderboard() {
   els.qualifiedList.innerHTML = rowsHtml;
 }
 
-// 💥 সুপার-ইলাস্টিক নিখুঁত বাউন্স ফাংশন
+// 💥 শুধু রিংয়ে ধাক্কা লাগলেই বাউন্স সাউন্ড বাজবে
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
@@ -937,7 +952,7 @@ function bounceFlag(f, dx, dy, dist) {
     
     const speed = Math.abs(dot);
     if (speed > 0.4) {
-      playSound("bounce", speed);
+      playSound("bounce", speed); // রিং বাউন্স সাউন্ড
     }
   }
 }
@@ -1007,44 +1022,6 @@ function gameLoop() {
       }
     }
 
-    // 🌟 রাউন্ড ব্যানার টেক্সট
-    let alpha = 1;
-    if (warmupElapsed > 1.8) {
-      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
-    }
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-
-    let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
-    ctx.font = "900 24px system-ui, -apple-system, sans-serif";
-    let textMetrics = ctx.measureText(roundBannerText);
-    let bgWidth = textMetrics.width + 48;
-    let bgHeight = 46;
-
-    ctx.fillStyle = "rgba(3, 8, 20, 0.92)";
-    ctx.strokeStyle = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.shadowBlur = 16;
-
-    if (ctx.roundRect) {
-      ctx.beginPath();
-      ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      ctx.fillRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
-      ctx.strokeRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
-    }
-
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.fillText(roundBannerText, arenaX, arenaY);
-
-    ctx.restore();
-
     if (warmupElapsed >= warmupDuration) {
       isWarmup = false;
       startTime = Date.now();
@@ -1099,6 +1076,7 @@ function gameLoop() {
       targetMaxAlive = 1;
     }
 
+    // ফ্ল্যাগ-টু-ফ্ল্যাগ সংঘর্ষে কোনো শব্দ হবে না
     const len = activeFlags.length;
     const minDist = 20;
     const minDistSq = 400;
@@ -1250,6 +1228,47 @@ function gameLoop() {
   ctx.globalAlpha = 1.0;
   for (let f of activeFlags) {
       ctx.fillText(f.emoji, f.x, f.y);
+  }
+
+  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট (সব ফ্ল্যাগ ড্র হওয়ার পর সবার ওপরে রেন্ডার হবে)
+  if (isWarmup) {
+    let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
+    let alpha = 1;
+    if (warmupElapsed > 1.8) {
+      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
+    }
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
+    ctx.font = "900 24px system-ui, -apple-system, sans-serif";
+    let textMetrics = ctx.measureText(roundBannerText);
+    let bgWidth = textMetrics.width + 48;
+    let bgHeight = 46;
+
+    ctx.fillStyle = "rgba(3, 8, 20, 0.94)";
+    ctx.strokeStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.shadowBlur = 18;
+
+    if (ctx.roundRect) {
+      ctx.beginPath();
+      ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
+      ctx.strokeRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
+    }
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+    ctx.fillText(roundBannerText, arenaX, arenaY);
+
+    ctx.restore();
   }
   
   requestAnimationFrame(gameLoop);
