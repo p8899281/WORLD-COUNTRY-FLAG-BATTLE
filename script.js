@@ -216,10 +216,17 @@ function playSound(type, intensity = 1) {
   } catch (e) {}
 }
 
-function speakWinner(name) {
+// 📢 প্রতি ৩ রাউন্ড পর পর "Comment your country name" বলার লজিক
+function speakWinner(name, currentRound) {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance("The winner is " + name);
+    
+    let textToSpeak = "The winner is " + name;
+    if (currentRound % 3 === 0) {
+      textToSpeak += ". Comment your country name!";
+    }
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.rate = 0.92;
     utterance.pitch = 1.0;
     utterance.lang = "en-US";
@@ -304,7 +311,6 @@ function beginBattle() {
   requestAnimationFrame(gameLoop);
 }
 
-// 🖥️ আল্ট্রা শার্প ক্রিস্প ডিসপ্লে হ্যান্ডলার
 function resizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   viewWidth = rect.width;
@@ -411,7 +417,7 @@ function declareWinner(flag) {
     if (!isPlaying) return;
     isPlaying = false;
     playSound("win");
-    speakWinner(flag.name);
+    speakWinner(flag.name, round); // 📢 রাউন্ড অনুযায়ী ভয়েস কল
     
     els.winnerOverlay.classList.remove("hidden");
     els.winnerFlagBox.innerText = flag.emoji;
@@ -501,7 +507,6 @@ function gameLoop() {
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
-    // 🚀 হাই-স্পিড অপ্টিমাইজড সংঘর্ষ (০ ল্যাগ)
     const len = activeFlags.length;
     const minDist = 20;
     const minDistSq = 400;
@@ -582,7 +587,6 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    // 🚀 হাই-স্পিড অপ্টিমাইজড সংঘর্ষ লজিক (Early Box Culling)
     const len = activeFlags.length;
     const minDist = 20;
     const minDistSq = 400;
