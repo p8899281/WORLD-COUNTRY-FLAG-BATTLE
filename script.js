@@ -318,6 +318,10 @@ function eliminate(flag) {
   flag.targetY = viewHeight - 12 - (row * 18);
   flag.settled = false;
 
+  // 🎯 প্রথম থেকেই সোজা নিচে দ্রুত পড়ার জন্য ভেলোসিটি ফিক্স
+  flag.vx = 0;
+  flag.vy = 3;
+
   deadFlags.push(flag); 
   updateUI();
   
@@ -485,10 +489,11 @@ function gameLoop() {
     }
   }
 
+  // 🎯 বাদ পড়া পতাকাগুলোর নিচে নামার স্মুথ গ্র্যাভিটি
   for (let f of deadFlags) {
       if (!f.settled) {
-          f.vy += 0.4;
-          f.x += (f.targetX - f.x) * 0.12;
+          f.vy += 0.5;
+          f.x += (f.targetX - f.x) * 0.15;
           f.y += f.vy;
           
           if (f.y >= f.targetY) {
@@ -517,12 +522,12 @@ function gameLoop() {
 
   // 🟡 ৩. গোল্ডেন ইয়োলো হরাইজন্টাল লাইন ও সাদা ব্যাকগ্রাউন্ড শ্যাডো
   let flagRatio = activeFlags.length / TOTAL_FLAGS;
-  let fullLineWidth = arenaR * 1.7; // লাইনের সম্পূর্ণ দৈর্ঘ্য
-  let lineStartX = arenaX - (fullLineWidth / 2); // বাঁ দিকের স্টার্টিং পয়েন্ট
+  let fullLineWidth = arenaR * 1.7; 
+  let lineStartX = arenaX - (fullLineWidth / 2); 
   let currentLineWidth = fullLineWidth * flagRatio;
-  let lineY = arenaY + arenaR + 22; // রিংয়ের আরেকটু নিচে পজিশনিং
+  let lineY = arenaY + arenaR + 22; 
 
-  // (A) ব্যাকগ্রাউন্ড হালকা সাদা ট্র্যাক/শ্যাডো (শুরুতে সম্পূর্ণ কতখানি ছিল তা বোঝাতে)
+  // (A) ব্যাকগ্রাউন্ড সাদা ট্র্যাক
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
   ctx.lineTo(lineStartX + fullLineWidth, lineY);
@@ -531,7 +536,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // (B) আসল গোল্ডেন ইয়োলো লাইন (ডান থেকে বাম দিকে কমে আসবে)
+  // (B) গোল্ডেন ইয়োলো প্রোগ্রেস লাইন
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
   ctx.lineTo(lineStartX + currentLineWidth, lineY);
@@ -540,7 +545,7 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. লাইনের ঠিক নিচে "KOTO BY KOTO FLAG ACHE" টেক্সট
+  // 🏷️ ৪. লাইনের নিচে টেক্সট
   ctx.font = "bold 13px sans-serif";
   ctx.fillStyle = "#ffd700";
   ctx.textAlign = "center";
