@@ -1172,7 +1172,7 @@ function bounceFlag(f, dx, dy, dist) {
     
     let tangX = -ny;
     let tangY = nx;
-    let scatter = (Math.random() - 0.5) * 3.0;
+    let scatter = (Math.random() - 0.5) * 6.0;
     f.vx += tangX * scatter;
     f.vy += tangY * scatter;
     
@@ -1295,6 +1295,23 @@ function gameLoop() {
     // আপডেট করবে।
     const battleBatch = activeFlags;
 
+    // ⚠️ FIX 2: শুধু radial outward push দিলে flag গুলো ring এর যেই angle এ
+    // প্রথম ধাক্কা খায়, প্রায় সেই একই angle এ radial ভাবে in-out pulse করতে
+    // থাকে (tangential drift ছিল খুবই কম) — এটাই "ring এর সাথে একই jaigay
+    // আটকে থাকা" দেখানোর কারণ। এখন radial push এর সাথে একটা ছোট tangential
+    // "swirl" force যোগ করা হচ্ছে, যাতে flag গুলো ring বরাবর ঘুরে ঘুরে gap
+    // খুঁজে বেড়ায় — স্বাভাবিক circulating motion তৈরি হয়।
+    const swirlDir = (whiteSpeed >= 0) ? 1 : -1;
+
+    // ⚠️ FIX 3: অনেক flag একসাথে ring এর কাছে জড়ো হলে একই frame এ একসাথে
+    // অনেকগুলো eliminate() কল হয়ে যাচ্ছিল, ফলে দেখতে মনে হতো "৫-৬টা একসাথে
+    // বার হয়ে গেল"। এখন এক frame এ সর্বোচ্চ কয়েকটা flag ই eliminate হতে
+    // পারবে, বাকিগুলো ওই frame এ শুধু bounce করবে এবং পরের frame(গুলো)-এ
+    // eliminate হবে — ফলে সত্যিকারের একটা-একটা করে বের হওয়া (staggered)
+    // visual পাওয়া যাবে, ৬০fps এ এটা এখনও অনেক দ্রুত/স্মুথ থাকবে।
+    const MAX_ELIMS_PER_FRAME = 1;
+    let eliminationsThisFrame = 0;
+
     for (let i = 0; i < battleBatch.length; i++) {
       let f = battleBatch[i];
       if (!f.active) continue;
@@ -1302,9 +1319,15 @@ function gameLoop() {
       let preDx = f.x - arenaX;
       let preDy = f.y - arenaY;
       let preDist = Math.hypot(preDx, preDy) || 1;
-      
-      f.vx += (preDx / preDist) * outwardPush;
-      f.vy += (preDy / preDist) * outwardPush;
+
+      let radialNx = preDx / preDist;
+      let radialNy = preDy / preDist;
+      let tangNx = -radialNy * swirlDir;
+      let tangNy = radialNx * swirlDir;
+      let swirlForce = outwardPush * 0.5;
+
+      f.vx += radialNx * outwardPush + tangNx * swirlForce;
+      f.vy += radialNy * outwardPush + tangNy * swirlForce;
 
       let currentV = Math.hypot(f.vx, f.vy);
       if (currentV > 25.0) {
@@ -1332,7 +1355,12 @@ function gameLoop() {
             } else {
                 if (activeFlags.length > targetMaxAlive) {
                     if (dist > arenaR + f.r + 2) {
-                        eliminate(f); 
+                        if (eliminationsThisFrame < MAX_ELIMS_PER_FRAME) {
+                            eliminate(f); 
+                            eliminationsThisFrame++;
+                        } else {
+                            bounceFlag(f, dx, dy, dist);
+                        }
                     }
                 } else {
                     bounceFlag(f, dx, dy, dist); 
