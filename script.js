@@ -1284,8 +1284,21 @@ function gameLoop() {
 
     resolveAllCollisions(activeFlags, 0.48, true);
 
-    for (let i = 0; i < activeFlags.length; i++) {
-      let f = activeFlags[i];
+    // ⚠️ FIX: eliminate() নিচে গিয়ে module-level `activeFlags` কে নতুন
+    // (ছোট) array দিয়ে reassign করে দেয়। এই loop যদি সরাসরি `activeFlags`
+    // ব্যবহার করে ঘোরে, তাহলে কোনো flag eliminate হওয়া মাত্র array shift
+    // হয়ে যায় এবং ঠিক পরের flag টা সেই frame এ পুরোপুরি skip হয়ে যায় —
+    // তার push/bounce/eliminate কোনো check-ই চলে না। এটাই "৪-৫টা বার হচ্ছে
+    // মনে হয় কিন্তু একটাই বার হচ্ছে" আর ফ্ল্যাগ গুলো আটকে/অদ্ভুতভাবে move
+    // করার আসল কারণ। এখন এই frame এর জন্য fixed snapshot এ loop চালাচ্ছি,
+    // তাই কোনো flag miss হবে না, কিন্তু eliminate() ঠিকই আসল activeFlags
+    // আপডেট করবে।
+    const battleBatch = activeFlags;
+
+    for (let i = 0; i < battleBatch.length; i++) {
+      let f = battleBatch[i];
+      if (!f.active) continue;
+
       let preDx = f.x - arenaX;
       let preDy = f.y - arenaY;
       let preDist = Math.hypot(preDx, preDy) || 1;
@@ -1302,10 +1315,8 @@ function gameLoop() {
       f.x += f.vx * (speedMult * 0.28);
       f.y += f.vy * (speedMult * 0.28);
 
-      // ⚠️ FIX: dx/dy/dist এখন movement এর পরে recalc করা হচ্ছে, নাহলে boundary
-      // check এক frame পুরনো position দিয়ে হতো — ফলে flag আগে থেকেই ring এর
-      // অনেক বাইরে চলে যেত, পরের frame এ হঠাৎ snap করে ফিরে আসতো (ring ভেদ করে
-      // বের হয়ে যাওয়ার মত দেখাতো)।
+      // dx/dy/dist movement এর পরে recalc করা হচ্ছে, নাহলে boundary check
+      // এক frame পুরনো position দিয়ে হতো।
       let dx = f.x - arenaX;
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
