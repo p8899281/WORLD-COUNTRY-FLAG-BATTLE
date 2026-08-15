@@ -103,7 +103,7 @@ let qualifiedTeams = [];
 let leaderboardPage = 0;
 let leaderboardInterval = null;
 
-// 🎵 AUDIO SYSTEM (৪টি রিয়েল-টাইম মিউজিক জেনারেটর + কাস্টম প্লেয়ার)
+// 🎵 AUDIO SYSTEM
 let audioCtx = null;
 let lastSoundTime = 0;
 let masterVolume = 0.7;
@@ -145,7 +145,6 @@ function changeVolume(val) {
 let bgmInterval = null;
 let bgmStep = 0;
 
-// ৪টি স্বতন্ত্র মিউজিক ট্র‍্যাক নোটস
 const musicTracks = {
   synth: {
     notes: [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 659.25, 587.33, 698.46, 880.00, 1174.66, 880.00, 698.46, 783.99, 659.25],
@@ -275,7 +274,7 @@ function stopBGM() {
   }
 }
 
-// 💥 শুধু রিংয়ে ধাক্কা খেলেই সাউন্ড বাজবে
+// 💥 সাউন্ড ইফেক্টস (বাউন্স সাউন্ড কমানো হয়েছে & আউট সাউন্ড বাড়ানো হয়েছে)
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
@@ -285,44 +284,47 @@ function playSound(type, intensity = 1) {
   try {
     const now = audioCtx.currentTime;
 
+    // 🔉 বাউন্স সাউন্ড: হালকা, সফট এবং আরামদায়ক করা হয়েছে
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 22) return;
+      if (nowTime - lastSoundTime < 24) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const pitch = 540 + Math.random() * 90 + Math.min(intensity, 3) * 30;
+      const pitch = 500 + Math.random() * 80 + Math.min(intensity, 3) * 20;
       osc.type = "sine";
       
       osc.frequency.setValueAtTime(pitch, now);
-      osc.frequency.exponentialRampToValueAtTime(120, now + 0.035);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.03);
       
-      const vol = Math.min(0.20, (0.08 + intensity * 0.03) * masterVolume);
+      const vol = Math.min(0.055, (0.015 + intensity * 0.012) * masterVolume);
       gain.gain.setValueAtTime(vol, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.045);
+      osc.stop(now + 0.038);
 
+    // 🔊 আউট / এলিমিনেশন সাউন্ড: লাউড, স্পষ্ট এবং পাঞ্চি (Punchy) করা হয়েছে
     } else if (type === "out") {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
       osc.type = "triangle";
-      osc.frequency.setValueAtTime(320 + Math.random() * 40, now);
-      osc.frequency.exponentialRampToValueAtTime(650, now + 0.04);
-      osc.frequency.exponentialRampToValueAtTime(140, now + 0.12);
+      osc.frequency.setValueAtTime(280 + Math.random() * 50, now);
+      osc.frequency.exponentialRampToValueAtTime(750, now + 0.045);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.14);
       
-      gain.gain.setValueAtTime(0.12 * masterVolume, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      const outVol = Math.min(0.35, 0.26 * masterVolume);
+      gain.gain.setValueAtTime(outVol, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.13);
+      osc.stop(now + 0.16);
 
     } else if (type === "win") {
       stopBGM(); 
@@ -680,7 +682,7 @@ function showKnockoutOverlay(flag) {
 function eliminate(flag) {
   if (!flag.active) return;
   flag.active = false;
-  playSound("out");
+  playSound("out"); // আউট সাউন্ড
   
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   
@@ -931,7 +933,7 @@ function renderLeaderboard() {
   els.qualifiedList.innerHTML = rowsHtml;
 }
 
-// 💥 শুধু রিংয়ে ধাক্কা লাগলেই বাউন্স সাউন্ড বাজবে
+// 💥 শুধু রিংয়ে ধাক্কা লাগলেই হালকা বাউন্স সাউন্ড বাজবে
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
@@ -952,7 +954,7 @@ function bounceFlag(f, dx, dy, dist) {
     
     const speed = Math.abs(dot);
     if (speed > 0.4) {
-      playSound("bounce", speed); // রিং বাউন্স সাউন্ড
+      playSound("bounce", speed); // হালকা রিং বাউন্স সাউন্ড
     }
   }
 }
@@ -1076,7 +1078,6 @@ function gameLoop() {
       targetMaxAlive = 1;
     }
 
-    // ফ্ল্যাগ-টু-ফ্ল্যাগ সংঘর্ষে কোনো শব্দ হবে না
     const len = activeFlags.length;
     const minDist = 20;
     const minDistSq = 400;
@@ -1230,7 +1231,7 @@ function gameLoop() {
       ctx.fillText(f.emoji, f.x, f.y);
   }
 
-  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট (সব ফ্ল্যাগ ড্র হওয়ার পর সবার ওপরে রেন্ডার হবে)
+  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট (সব ফ্ল্যাগের সবার ওপরে রেন্ডার হবে)
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
     let alpha = 1;
