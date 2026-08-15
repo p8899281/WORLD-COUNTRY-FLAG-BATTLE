@@ -1,5 +1,5 @@
 const canvas = document.getElementById("arena");
-const ctx = canvas ? canvas.getContext("2d") : null;
+const ctx = canvas ? canvas.getContext("2d", { alpha: false }) : null;
 
 const confettiCanvas = document.getElementById("confettiCanvas");
 const confettiCtx = confettiCanvas ? confettiCanvas.getContext("2d") : null;
@@ -274,7 +274,7 @@ function stopBGM() {
   }
 }
 
-// 💥 সাউন্ড ইফেক্টস (বাউন্স সাউন্ড কমানো হয়েছে & আউট সাউন্ড বাড়ানো হয়েছে)
+// 💥 শুধু রিংয়ে ধাক্কা লাগলেই হালকা বাউন্স সাউন্ড & আউট সাউন্ড
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
@@ -284,7 +284,6 @@ function playSound(type, intensity = 1) {
   try {
     const now = audioCtx.currentTime;
 
-    // 🔉 বাউন্স সাউন্ড: হালকা, সফট এবং আরামদায়ক করা হয়েছে
     if (type === "bounce") {
       if (nowTime - lastSoundTime < 24) return;
       lastSoundTime = nowTime;
@@ -307,7 +306,6 @@ function playSound(type, intensity = 1) {
       osc.start(now);
       osc.stop(now + 0.038);
 
-    // 🔊 আউট / এলিমিনেশন সাউন্ড: লাউড, স্পষ্ট এবং পাঞ্চি (Punchy) করা হয়েছে
     } else if (type === "out") {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -492,7 +490,7 @@ function resizeCanvas() {
   viewWidth = rect.width;
   viewHeight = rect.height;
   
-  dpr = Math.max(window.devicePixelRatio || 1, 2);
+  dpr = Math.min(window.devicePixelRatio || 1, 2.5); // হাই কোয়ালিটি কিন্তু স্মুথ পারফরম্যান্স
   
   canvas.width = Math.floor(viewWidth * dpr);
   canvas.height = Math.floor(viewHeight * dpr);
@@ -529,16 +527,17 @@ function resizeCanvas() {
   arenaR = Math.min((viewWidth - 20) / 2, usableH / 2);
   arenaY = topPadding + (usableH / 2);
 
-  deadFlags.forEach((flag, idx) => {
-    const col = idx % itemsPerRow;
-    const row = Math.floor(idx / itemsPerRow);
+  for (let i = 0; i < deadFlags.length; i++) {
+    const flag = deadFlags[i];
+    const col = i % itemsPerRow;
+    const row = Math.floor(i / itemsPerRow);
     flag.targetX = startX + col * itemWidth;
     flag.targetY = viewHeight - 8 - (row * 14);
     if (flag.settled) {
       flag.x = flag.targetX;
       flag.y = flag.targetY;
     }
-  });
+  }
 }
 
 function updateRoundFooterInfo(currentElapsed = 0) {
@@ -565,8 +564,8 @@ function updateRoundFooterInfo(currentElapsed = 0) {
 }
 
 function initGame() {
-  flags = [];
-  deadFlags = [];
+  flags.length = 0;
+  deadFlags.length = 0;
   
   isWarmup = true;
   warmupStartTime = Date.now();
@@ -682,7 +681,7 @@ function showKnockoutOverlay(flag) {
 function eliminate(flag) {
   if (!flag.active) return;
   flag.active = false;
-  playSound("out"); // আউট সাউন্ড
+  playSound("out");
   
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   
@@ -742,7 +741,8 @@ function startCelebrationConfetti() {
     if (!confettiCtx) return;
     confettiCtx.clearRect(0, 0, viewWidth, viewHeight);
     
-    for (let p of confettiParticles) {
+    for (let i = 0; i < confettiParticles.length; i++) {
+      let p = confettiParticles[i];
       p.vy += p.gravity;
       p.vx *= p.drag;
       p.vy *= p.drag;
@@ -795,7 +795,6 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -831,7 +830,6 @@ function declareWinner(flag) {
       return; 
     }
 
-    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     if (els.winnerHeading) {
@@ -954,7 +952,7 @@ function bounceFlag(f, dx, dy, dist) {
     
     const speed = Math.abs(dot);
     if (speed > 0.4) {
-      playSound("bounce", speed); // হালকা রিং বাউন্স সাউন্ড
+      playSound("bounce", speed);
     }
   }
 }
@@ -962,7 +960,8 @@ function bounceFlag(f, dx, dy, dist) {
 function gameLoop() {
   if (!isPlaying || !ctx) return;
   
-  ctx.clearRect(0, 0, viewWidth, viewHeight);
+  ctx.fillStyle = "#020c06";
+  ctx.fillRect(0, 0, viewWidth, viewHeight);
 
   // -------------------------------------------------------------
   // ⚡ ১. ওয়ার্ম-আপ ফেজ
@@ -1008,7 +1007,8 @@ function gameLoop() {
       }
     }
 
-    for (let f of activeFlags) {
+    for (let i = 0; i < len; i++) {
+      let f = activeFlags[i];
       let jitterX = (Math.random() - 0.5) * 4;
       let jitterY = (Math.random() - 0.5) * 4;
 
@@ -1114,7 +1114,8 @@ function gameLoop() {
       }
     }
 
-    for (let f of [...activeFlags]) {
+    for (let i = activeFlags.length - 1; i >= 0; i--) {
+      let f = activeFlags[i];
       let dx = f.x - arenaX;
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
@@ -1170,7 +1171,8 @@ function gameLoop() {
   }
 
   // নিচে এলিমিনেটেড ফ্ল্যাগ সাজানো
-  for (let f of deadFlags) {
+  for (let i = 0; i < deadFlags.length; i++) {
+      let f = deadFlags[i];
       if (!f.settled) {
           f.x += (f.targetX - f.x) * 0.18;
           f.y += (f.targetY - f.y) * 0.18;
@@ -1221,13 +1223,15 @@ function gameLoop() {
   
   ctx.font = "14px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
   ctx.globalAlpha = 0.85; 
-  for (let f of deadFlags) {
+  for (let i = 0; i < deadFlags.length; i++) {
+      let f = deadFlags[i];
       ctx.fillText(f.emoji, f.x, f.y);
   }
 
   ctx.font = "23px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
   ctx.globalAlpha = 1.0;
-  for (let f of activeFlags) {
+  for (let i = 0; i < activeFlags.length; i++) {
+      let f = activeFlags[i];
       ctx.fillText(f.emoji, f.x, f.y);
   }
 
