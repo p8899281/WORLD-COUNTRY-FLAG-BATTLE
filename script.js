@@ -274,7 +274,6 @@ function stopBGM() {
   }
 }
 
-// 💥 শুধু রিংয়ে ধাক্কা লাগলেই হালকা বাউন্স সাউন্ড & আউট সাউন্ড
 function playSound(type, intensity = 1) {
   if (!audioCtx || !isPlaying) return;
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
@@ -490,7 +489,7 @@ function resizeCanvas() {
   viewWidth = rect.width;
   viewHeight = rect.height;
   
-  dpr = Math.min(window.devicePixelRatio || 1, 2.5); // হাই কোয়ালিটি কিন্তু স্মুথ পারফরম্যান্স
+  dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   
   canvas.width = Math.floor(viewWidth * dpr);
   canvas.height = Math.floor(viewHeight * dpr);
@@ -716,6 +715,7 @@ function eliminate(flag) {
   }
 }
 
+// 🎉 কনফেটি সেলিব্রেশন সিস্টেম (প্রতিটি রাউন্ডের বিজয়ীর জন্যও সক্রিয়)
 function startCelebrationConfetti() {
   if (!confettiCtx) return;
   confettiParticles = [];
@@ -790,11 +790,23 @@ function startCelebrationConfetti() {
   loopConfetti();
 }
 
+function stopCelebrationConfetti() {
+  if (confettiAnimationId) {
+    cancelAnimationFrame(confettiAnimationId);
+    confettiAnimationId = null;
+  }
+  confettiParticles = [];
+  if (confettiCtx) {
+    confettiCtx.clearRect(0, 0, viewWidth, viewHeight);
+  }
+}
+
 function declareWinner(flag) {
     if (!isPlaying && !isFinalRound) return;
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
+    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -826,10 +838,11 @@ function declareWinner(flag) {
       if (els.podium3Name) els.podium3Name.innerText = podiumPlaces.third ? podiumPlaces.third.name : "3rd Place";
 
       if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
-      startCelebrationConfetti();
+      startCelebrationConfetti(); // গ্র্যান্ড সেলিব্রেশন
       return; 
     }
 
+    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড (এখানেও সেলিব্রেশন কনফেটি চলবে)
     playSound("win");
     speakWinner(flag.name, round);
     if (els.winnerHeading) {
@@ -848,10 +861,16 @@ function declareWinner(flag) {
 
     if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
     
+    // 🎊 রাউন্ড বিজয়ীর জন্য কনফেটি ব্লাস্ট শুরু
+    startCelebrationConfetti();
+    
     recordQualifier(flag);
     
     setTimeout(() => {
         if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
+        
+        // পরের রাউন্ড শুরুর আগে কনফেটি থামানো
+        stopCelebrationConfetti();
         
         if (round >= MAX_QUALIFYING_ROUNDS) {
           isFinalRound = true;
@@ -1114,7 +1133,7 @@ function gameLoop() {
       }
     }
 
-    for (let i = activeFlags.length - 1; i >= 0; i--) {
+    for (let i = 0; i < activeFlags.length; i++) {
       let f = activeFlags[i];
       let dx = f.x - arenaX;
       let dy = f.y - arenaY;
