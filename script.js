@@ -44,11 +44,11 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const baseGapSize = Math.PI / 3.4;   
-const yellowSize = Math.PI / 4.5;    
+const baseGapSize = Math.PI / 3.2;   
+const yellowSize = Math.PI / 4.0;    
 
-const whiteSpeed = 0.042; 
-const yellowSpeed = 0.092; 
+const whiteSpeed = 0.038; 
+const yellowSpeed = 0.075; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
@@ -74,7 +74,7 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
-// 🏆 কাস্টমাইজেবল রাউন্ড স্টেট (15, 30, 60, 90, 120)
+// 🏆 কাস্টমাইজেবল রাউন্ড স্টেট
 let round = 1;
 let MAX_QUALIFYING_ROUNDS = 60; 
 let isFinalRound = false;
@@ -95,7 +95,7 @@ let knockoutTimeout = null;
 
 let isWarmup = true;
 let warmupStartTime = 0;
-const warmupDuration = 2.5;
+const warmupDuration = 2.2;
 
 let startTime = 0;
 let roundDuration = 45; 
@@ -390,10 +390,6 @@ function speakWinner(name, currentRound) {
   speakText(text);
 }
 
-function speakKnockout(name) {
-  speakText(name + " finally knocked out");
-}
-
 function speakGrandChampion(name) {
   speakText("Congratulations " + name + "! You are the Grand Champion!");
 }
@@ -668,7 +664,7 @@ function initGame() {
 
   let currentPool = [];
   if (isFinalRound) {
-    roundDuration = 180; 
+    roundDuration = 120; 
 
     currentPool = qualifiedTeams.map(t => [t.code, t.name, t.emoji]);
     if (currentPool.length < 3) {
@@ -702,10 +698,10 @@ function initGame() {
     let country = currentPool[i];
     
     let spawnAngle = Math.random() * Math.PI * 2;
-    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.65);
+    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.70);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 12.0 + Math.random() * 8.0;
+    let speed = 4.0 + Math.random() * 3.5;
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -733,48 +729,8 @@ function normalizeAngle(a) {
 }
 
 function isAngleBetween(target, start, end) {
-  if (start < end) return target >= start && target <= end;
+  if (start <= end) return target >= start && target <= end;
   return target >= start || target <= end;
-}
-
-function showKnockoutOverlay(flag) {
-  isPlaying = false;
-  stopBGM();
-  if (knockoutTimeout) clearTimeout(knockoutTimeout);
-
-  const pauseStartTime = Date.now();
-
-  if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
-  if (els.winnerHeading) {
-    els.winnerHeading.innerText = "❌ FINALLY KNOCKED OUT ❌";
-    els.winnerHeading.style.color = "#ff4444";
-  }
-  if (els.winnerFlagBox) {
-    els.winnerFlagBox.classList.remove("hidden");
-    els.winnerFlagBox.innerText = flag.emoji;
-  }
-  if (els.winnerName) {
-    els.winnerName.classList.remove("hidden");
-    els.winnerName.innerText = flag.name;
-  }
-  if (els.podiumContainer) els.podiumContainer.classList.add("hidden");
-
-  speakKnockout(flag.name);
-
-  knockoutTimeout = setTimeout(() => {
-    if (activeFlags.length <= 1) {
-      if (activeFlags.length === 1) declareWinner(activeFlags[0]);
-      return;
-    }
-
-    if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
-    const pauseDuration = Date.now() - pauseStartTime;
-    startTime += pauseDuration;
-
-    isPlaying = true;
-    startBGM();
-    requestAnimationFrame(gameLoop);
-  }, 2200);
 }
 
 function eliminate(flag) {
@@ -804,11 +760,6 @@ function eliminate(flag) {
       podiumPlaces.third = flag;
     } else if (activeFlags.length === 1) {
       podiumPlaces.second = flag;
-    }
-
-    if (activeFlags.length < 10 && activeFlags.length >= 1) {
-      showKnockoutOverlay(flag);
-      return;
     }
   }
 
@@ -1098,10 +1049,10 @@ function resolveCollisionPair(f1, f2, pushFactor, resolveVelocity) {
     if (resolveVelocity) {
       let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
       if (vrel > 0) {
-        f1.vx -= vrel * 1.02 * nx;
-        f1.vy -= vrel * 1.02 * ny;
-        f2.vx += vrel * 1.02 * nx;
-        f2.vy += vrel * 1.02 * ny;
+        f1.vx -= vrel * 0.98 * nx;
+        f1.vy -= vrel * 0.98 * ny;
+        f2.vx += vrel * 0.98 * nx;
+        f2.vy += vrel * 0.98 * ny;
       }
     }
   }
@@ -1161,12 +1112,12 @@ function bounceFlag(f, dx, dy, dist) {
 
   let dot = (f.vx * nx) + (f.vy * ny);
   if (dot > 0) {
-    f.vx -= 2.02 * dot * nx;
-    f.vy -= 2.02 * dot * ny;
+    f.vx -= 1.95 * dot * nx;
+    f.vy -= 1.95 * dot * ny;
     
     let tangX = -ny;
     let tangY = nx;
-    let scatter = (Math.random() - 0.5) * 4.0;
+    let scatter = (Math.random() - 0.5) * 1.5;
     f.vx += tangX * scatter;
     f.vy += tangY * scatter;
     
@@ -1203,11 +1154,11 @@ function gameLoop() {
 
     for (let i = activeFlags.length - 1; i >= 0; i--) {
       let f = activeFlags[i];
-      let jitterX = (Math.random() - 0.5) * 4;
-      let jitterY = (Math.random() - 0.5) * 4;
+      let jitterX = (Math.random() - 0.5) * 1.5;
+      let jitterY = (Math.random() - 0.5) * 1.5;
 
-      f.x += f.vx * 0.45 + jitterX;
-      f.y += f.vy * 0.45 + jitterY;
+      f.x += f.vx * 0.8 + jitterX;
+      f.y += f.vy * 0.8 + jitterY;
 
       let dx = f.x - arenaX;
       let dy = f.y - arenaY;
@@ -1236,34 +1187,19 @@ function gameLoop() {
 
     updateRoundFooterInfo(elapsed);
 
-    let targetDuration = isFinalRound ? 175.0 : 42.0;
-    let timeRatio = Math.min(1, elapsed / targetDuration);
+    let timeRatio = Math.min(1, elapsed / (roundDuration - 3));
 
-    let outwardPush = 0.30 + Math.pow(timeRatio, 1.2) * 0.85;
-    let speedMult = 2.4 + timeRatio * 2.8;
+    // ধীরে ধীরে স্বাভাবিক গতি ও গ্যাপ বাড়ানো
+    let activeGapSize = baseGapSize * (1 + timeRatio * 0.65);
+    let speedMult = 1.0 + timeRatio * 0.45;
 
-    let activeGapSize = baseGapSize;
-    if (isFinalRound) {
-      if (activeFlags.length <= 10) {
-        activeGapSize = baseGapSize * 0.5;
-      } else if (elapsed >= 150.0) {
-        let lateRatio = Math.min(1, (elapsed - 150.0) / 25.0);
-        activeGapSize = baseGapSize * (1 + lateRatio * 1.2);
-      }
-    } else if (elapsed >= 32.0) {
-      let lateRatio = Math.min(1, (elapsed - 32.0) / 9.0);
-      activeGapSize = baseGapSize * (1 + lateRatio * 1.2);
-    }
-
-    // টাইম শেষ হয়ে গেলে দ্রুত বের করার লজিক (Infinite loop fix)
     if (timeLeft <= 0 && activeFlags.length > 1) {
-      outwardPush = 2.8;
-      speedMult = 5.5;
-      activeGapSize = Math.PI; 
+      activeGapSize = Math.PI * 1.2;
+      speedMult = 1.8;
     }
 
-    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.35));
-    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + timeRatio * 0.35));
+    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.25));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + timeRatio * 0.25));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -1271,15 +1207,7 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    let targetMaxAlive;
-    if (elapsed < targetDuration) {
-      let p = elapsed / targetDuration;
-      targetMaxAlive = Math.max(2, Math.round(TOTAL_FLAGS * (1 - Math.pow(p, 1.1))));
-    } else {
-      targetMaxAlive = 1;
-    }
-
-    resolveAllCollisions(activeFlags, 0.48, true);
+    resolveAllCollisions(activeFlags, 0.45, true);
 
     // নিরাপদ লুপ: পেছনের দিক থেকে চেক করা
     for (let i = activeFlags.length - 1; i >= 0; i--) {
@@ -1290,18 +1218,22 @@ function gameLoop() {
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
       
-      f.vx += (dx / dist) * outwardPush;
-      f.vy += (dy / dist) * outwardPush;
+      // হালকা প্রাকৃতিক কেন্দ্রাতিগ বল (Natural Centrifugal Drift)
+      let drift = 0.08 + timeRatio * 0.08;
+      f.vx += (dx / dist) * drift;
+      f.vy += (dy / dist) * drift;
 
+      // গতি খুব বেশি অস্বাভাবিক যাতে না হয়
       let currentV = Math.hypot(f.vx, f.vy);
-      if (currentV > 25.0) {
-        f.vx = (f.vx / currentV) * 25.0;
-        f.vy = (f.vy / currentV) * 25.0;
+      if (currentV > 9.0) {
+        f.vx = (f.vx / currentV) * 9.0;
+        f.vy = (f.vy / currentV) * 9.0;
       }
 
-      f.x += f.vx * (speedMult * 0.28);
-      f.y += f.vy * (speedMult * 0.28);
+      f.x += f.vx * speedMult;
+      f.y += f.vy * speedMult;
       
+      // বাউন্ডারি ও গ্যাপ লজিক
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
@@ -1309,14 +1241,12 @@ function gameLoop() {
         if (inGap) {
             let inYellow = isAngleBetween(fAngle, yStart, yEnd);
             if (inYellow) {
+                // নিয়ন আর্চে লাগলে বাউন্স হবে
                 bounceFlag(f, dx, dy, dist); 
             } else {
-                if (activeFlags.length > targetMaxAlive || timeLeft <= 0) {
-                    if (dist > arenaR + f.r + 2) {
-                        eliminate(f); 
-                    }
-                } else {
-                    bounceFlag(f, dx, dy, dist); 
+                // কোনো কৃত্রিম বাধা নেই! গ্যাপ পেলে সরাসরি বের হয়ে এলিমিনেট হবে
+                if (dist > arenaR + f.r + 6) {
+                    eliminate(f); 
                 }
             }
         } else {
@@ -1340,7 +1270,7 @@ function gameLoop() {
     ctx.stroke();
   }
 
-  // নিচে ডেড ফ্ল্যাগ সাজানো
+  // নিচে এলিমিনেটেড ফ্ল্যাগ সাজানো
   for (let i = 0; i < deadFlags.length; i++) {
       let f = deadFlags[i];
       if (!f.settled) {
@@ -1404,8 +1334,8 @@ function gameLoop() {
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
     let alpha = 1;
-    if (warmupElapsed > 1.8) {
-      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.7);
+    if (warmupElapsed > 1.6) {
+      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.6);
     }
 
     ctx.save();
