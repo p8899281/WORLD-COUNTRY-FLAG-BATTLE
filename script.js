@@ -704,7 +704,6 @@ function initGame() {
     let spawnAngle = Math.random() * Math.PI * 2;
     let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.70);
     
-    // দ্রুত ও ডায়নামিক শুরুর বেগ
     let moveAngle = Math.random() * Math.PI * 2;
     let speed = 6.5 + Math.random() * 3.5;
     
@@ -738,6 +737,85 @@ function isAngleBetween(target, start, end) {
   return target >= start || target <= end;
 }
 
+// ❌ টপ ১০ নকআউট অ্যানাউন্সমেন্ট ওভারলে
+function showKnockoutOverlay(flag) {
+  isPlaying = false;
+  stopBGM();
+  if (knockoutTimeout) clearTimeout(knockoutTimeout);
+
+  const pauseStartTime = Date.now();
+
+  if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
+  if (els.winnerHeading) {
+    els.winnerHeading.innerText = "❌ FINALLY KNOCKED OUT ❌";
+    els.winnerHeading.style.color = "#ff4444";
+  }
+  if (els.winnerFlagBox) {
+    els.winnerFlagBox.classList.remove("hidden");
+    els.winnerFlagBox.innerText = flag.emoji;
+  }
+  if (els.winnerName) {
+    els.winnerName.classList.remove("hidden");
+    els.winnerName.innerText = flag.name;
+  }
+  if (els.podiumContainer) els.podiumContainer.classList.add("hidden");
+
+  speakKnockout(flag.name);
+
+  knockoutTimeout = setTimeout(() => {
+    if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
+    const pauseDuration = Date.now() - pauseStartTime;
+    startTime += pauseDuration;
+
+    isPlaying = true;
+    startBGM();
+    requestAnimationFrame(gameLoop);
+  }, 2400);
+}
+
+// 🎖️ ৩য় ও ২য় স্থান সেলিব্রেশন ওভারলে
+function showMedalOverlay(flag, titleText, speechRank, callback) {
+  isPlaying = false;
+  stopBGM();
+  if (knockoutTimeout) clearTimeout(knockoutTimeout);
+
+  const pauseStartTime = Date.now();
+
+  if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
+  if (els.winnerHeading) {
+    els.winnerHeading.innerText = titleText;
+    els.winnerHeading.style.color = titleText.includes("3RD") ? "#cd7f32" : "#dcdcdc";
+  }
+  if (els.winnerFlagBox) {
+    els.winnerFlagBox.classList.remove("hidden");
+    els.winnerFlagBox.innerText = flag.emoji;
+  }
+  if (els.winnerName) {
+    els.winnerName.classList.remove("hidden");
+    els.winnerName.innerText = flag.name;
+  }
+  if (els.podiumContainer) els.podiumContainer.classList.add("hidden");
+
+  playSound("win");
+  startCelebrationConfetti();
+  speakText(`Congratulations ${flag.name}! You won the ${speechRank}!`);
+
+  knockoutTimeout = setTimeout(() => {
+    stopCelebrationConfetti();
+    if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
+
+    if (callback) {
+      callback();
+    } else {
+      const pauseDuration = Date.now() - pauseStartTime;
+      startTime += pauseDuration;
+      isPlaying = true;
+      startBGM();
+      requestAnimationFrame(gameLoop);
+    }
+  }, 3800);
+}
+
 function eliminate(flag) {
   if (!flag.active) return;
   flag.active = false;
@@ -761,10 +839,26 @@ function eliminate(flag) {
   if (isFinalRound) {
     renderFinalStandings();
 
+    // 🥉 ৩য় স্থান সেলিব্রেশন (যখন ৩ জনের মধ্যে প্রথমজন বের হবে)
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
-    } else if (activeFlags.length === 1) {
+      showMedalOverlay(flag, "🥉 3RD PLACE - BRONZE MEDAL 🥉", "3rd place bronze medal");
+      return;
+    }
+
+    // 🥈 ২য় স্থান সেলিব্রেশন (যখন ২ জনের মধ্যে একজন বের হবে)
+    if (activeFlags.length === 1) {
       podiumPlaces.second = flag;
+      showMedalOverlay(flag, "🥈 2ND PLACE - RUNNER UP 🥈", "2nd place silver medal", () => {
+        declareWinner(activeFlags[0]);
+      });
+      return;
+    }
+
+    // ❌ ফাইনাল রাউন্ডে ১০ জনের পর থেকে নকআউট অ্যানাউন্সমেন্ট
+    if (activeFlags.length >= 2 && activeFlags.length < 10) {
+      showKnockoutOverlay(flag);
+      return;
     }
   }
 
@@ -864,7 +958,7 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী
+    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী (🥇 Champion)
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -1108,29 +1202,25 @@ function resolveAllCollisions(list, pushFactor, resolveVelocity) {
   });
 }
 
-// 💥 শক্তিশালী ইমপ্যাক্ট বাউন্স (দেওয়ালে লাগলেই ছিটকে বিপরীত দিকে যাবে)
+// 💥 শক্তিশালী ইমপ্যাক্ট বাউন্স
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  // ফ্ল্যাগকে দেওয়াল থেকে ভেতরে সুরক্ষিত স্থানে স্থাপন
   f.x = arenaX + nx * (arenaR - f.r - 2.0);
   f.y = arenaY + ny * (arenaR - f.r - 2.0);
 
   let dot = (f.vx * nx) + (f.vy * ny);
   if (dot > 0) {
-    // পিওর ইলাস্টিক রিফ্লেকশন
     f.vx -= 2.0 * dot * nx;
     f.vy -= 2.0 * dot * ny;
     
-    // হালকা ট্র্যাজেক্টরি ছড়ানো যাতে একঘেয়ে না লাগে
     let perpX = -ny;
     let perpY = nx;
     let scatter = (Math.random() - 0.5) * 0.4;
     f.vx += perpX * scatter;
     f.vy += perpY * scatter;
     
-    // 🚀 হাই-ভেলোসিটি রিবাউন্ড (নিচে লাগলে সোজা উপরে/পাশে, উপরে লাগলে নিচে তীব্র গতিতে যাবে)
     let vMag = Math.hypot(f.vx, f.vy);
     let punchSpeed = 9.5 + Math.random() * 3.5; 
     if (vMag > 0.01) {
@@ -1191,7 +1281,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ (উচ্চ গতি ও শক্তিশালী লড়াই)
+  // ⚔️ ২. মূল লড়াই ফেজ
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -1205,7 +1295,6 @@ function gameLoop() {
 
     let progressRatio = Math.min(1, elapsed / roundDuration);
 
-    // গ্যাপ ব্যালেন্স
     let activeGapSize = baseGapSize * (1 + Math.pow(progressRatio, 1.8) * 1.6);
     let speedMult = 1.0 + Math.pow(progressRatio, 1.4) * 0.4;
 
@@ -1233,7 +1322,6 @@ function gameLoop() {
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
       
-      // সর্বোচ্চ বেগ নিয়ন্ত্রণ
       let currentV = Math.hypot(f.vx, f.vy);
       if (currentV > 16.0) {
         f.vx = (f.vx / currentV) * 16.0;
