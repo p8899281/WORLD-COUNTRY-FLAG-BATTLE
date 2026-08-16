@@ -44,11 +44,12 @@ let deadFlags = [];
 let whiteAngle = 0;       
 let yellowAngle = 0;      
 
-const baseGapSize = Math.PI / 3.2;   
-const yellowSize = Math.PI / 4.0;    
+// শুরুতে ছোট গ্যাপ যাতে সময় নিয়ে ধীরে ধীরে ফ্ল্যাগ বের হয়
+const baseGapSize = Math.PI / 6.2;   
+const yellowSize = Math.PI / 5.0;    
 
-const whiteSpeed = 0.038; 
-const yellowSpeed = 0.075; 
+const whiteSpeed = 0.032; 
+const yellowSpeed = 0.065; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
@@ -95,7 +96,7 @@ let knockoutTimeout = null;
 
 let isWarmup = true;
 let warmupStartTime = 0;
-const warmupDuration = 2.2;
+const warmupDuration = 2.0;
 
 let startTime = 0;
 let roundDuration = 45; 
@@ -285,26 +286,26 @@ function playSound(type, intensity = 1) {
     const now = audioCtx.currentTime;
 
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 24) return;
+      if (nowTime - lastSoundTime < 28) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const pitch = 500 + Math.random() * 80 + Math.min(intensity, 3) * 20;
+      const pitch = 450 + Math.random() * 80;
       osc.type = "sine";
       
       osc.frequency.setValueAtTime(pitch, now);
-      osc.frequency.exponentialRampToValueAtTime(110, now + 0.03);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.03);
       
-      const vol = Math.min(0.055, (0.015 + intensity * 0.012) * masterVolume);
+      const vol = Math.min(0.045, (0.012 + intensity * 0.01) * masterVolume);
       gain.gain.setValueAtTime(vol, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.032);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.038);
+      osc.stop(now + 0.035);
 
     } else if (type === "out") {
       const osc = audioCtx.createOscillator();
@@ -388,6 +389,10 @@ function speakWinner(name, currentRound) {
     text += ". Comment your country name!";
   }
   speakText(text);
+}
+
+function speakKnockout(name) {
+  speakText(name + " finally knocked out");
 }
 
 function speakGrandChampion(name) {
@@ -698,10 +703,11 @@ function initGame() {
     let country = currentPool[i];
     
     let spawnAngle = Math.random() * Math.PI * 2;
-    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.70);
+    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.72);
     
+    // বাস্তবমুখী রৈখিক গতি (Linear billiard velocities)
     let moveAngle = Math.random() * Math.PI * 2;
-    let speed = 4.0 + Math.random() * 3.5;
+    let speed = 4.0 + Math.random() * 2.0;
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -1049,10 +1055,10 @@ function resolveCollisionPair(f1, f2, pushFactor, resolveVelocity) {
     if (resolveVelocity) {
       let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
       if (vrel > 0) {
-        f1.vx -= vrel * 0.98 * nx;
-        f1.vy -= vrel * 0.98 * ny;
-        f2.vx += vrel * 0.98 * nx;
-        f2.vy += vrel * 0.98 * ny;
+        f1.vx -= vrel * 0.95 * nx;
+        f1.vy -= vrel * 0.95 * ny;
+        f2.vx += vrel * 0.95 * nx;
+        f2.vy += vrel * 0.95 * ny;
       }
     }
   }
@@ -1103,27 +1109,38 @@ function resolveAllCollisions(list, pushFactor, resolveVelocity) {
   });
 }
 
+// 💥 নিখুঁত বাউন্স ফিজিক্স (রিংয়ের দেওয়াল থেকে ভেতর দিয়ে বিপরীতে ছিটকে যাবে)
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
   
-  f.x = arenaX + nx * (arenaR - f.r - 0.5);
-  f.y = arenaY + ny * (arenaR - f.r - 0.5);
+  // ফ্ল্যাগকে রিংয়ের ভেতরে ঠিকঠাক সেট করা
+  f.x = arenaX + nx * (arenaR - f.r - 1.5);
+  f.y = arenaY + ny * (arenaR - f.r - 1.5);
 
   let dot = (f.vx * nx) + (f.vy * ny);
   if (dot > 0) {
-    f.vx -= 1.95 * dot * nx;
-    f.vy -= 1.95 * dot * ny;
+    // পিওর ইলাস্টিক রিফ্লেকশন
+    f.vx -= 2.0 * dot * nx;
+    f.vy -= 2.0 * dot * ny;
     
-    let tangX = -ny;
-    let tangY = nx;
-    let scatter = (Math.random() - 0.5) * 1.5;
-    f.vx += tangX * scatter;
-    f.vy += tangY * scatter;
+    // হালকা ট্র্যাজেক্টরি র‍্যান্ডমাইজেশন
+    let perpX = -ny;
+    let perpY = nx;
+    let scatter = (Math.random() - 0.5) * 0.7;
+    f.vx += perpX * scatter;
+    f.vy += perpY * scatter;
     
-    const speed = Math.abs(dot);
-    if (speed > 0.4) {
-      playSound("bounce", speed);
+    // কনসিস্টেন্ট বিলিয়ার্ড স্পিড ধরে রাখা
+    let vMag = Math.hypot(f.vx, f.vy);
+    let targetSpeed = 4.5 + Math.random() * 1.5;
+    if (vMag > 0.01) {
+      f.vx = (f.vx / vMag) * targetSpeed;
+      f.vy = (f.vy / vMag) * targetSpeed;
+    }
+    
+    if (Math.abs(dot) > 0.3) {
+      playSound("bounce", Math.abs(dot));
     }
   }
 }
@@ -1154,8 +1171,8 @@ function gameLoop() {
 
     for (let i = activeFlags.length - 1; i >= 0; i--) {
       let f = activeFlags[i];
-      let jitterX = (Math.random() - 0.5) * 1.5;
-      let jitterY = (Math.random() - 0.5) * 1.5;
+      let jitterX = (Math.random() - 0.5) * 0.8;
+      let jitterY = (Math.random() - 0.5) * 0.8;
 
       f.x += f.vx * 0.8 + jitterX;
       f.y += f.vy * 0.8 + jitterY;
@@ -1175,7 +1192,7 @@ function gameLoop() {
     }
   } 
   // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ
+  // ⚔️ ২. মূল লড়াই ফেজ (বাস্তব টাইমিং ও ব্যালেন্সড এলিমিনেশন)
   // -------------------------------------------------------------
   else {
     let elapsed = (Date.now() - startTime) / 1000;
@@ -1187,19 +1204,21 @@ function gameLoop() {
 
     updateRoundFooterInfo(elapsed);
 
-    let timeRatio = Math.min(1, elapsed / (roundDuration - 3));
+    // পুরো রাউন্ড জুড়ে সময়মতো গ্যাপ ও স্পিডের বৃদ্ধি
+    let progressRatio = Math.min(1, elapsed / roundDuration);
 
-    // ধীরে ধীরে স্বাভাবিক গতি ও গ্যাপ বাড়ানো
-    let activeGapSize = baseGapSize * (1 + timeRatio * 0.65);
-    let speedMult = 1.0 + timeRatio * 0.45;
+    // শুরুতে গ্যাপ ছোট থাকবে, শেষ ১০-১৫ সেকেন্ডে ধীরে ধীরে বড় হবে
+    let activeGapSize = baseGapSize * (1 + Math.pow(progressRatio, 1.8) * 1.6);
+    let speedMult = 1.0 + Math.pow(progressRatio, 1.5) * 0.45;
 
-    if (timeLeft <= 0 && activeFlags.length > 1) {
-      activeGapSize = Math.PI * 1.2;
-      speedMult = 1.8;
+    // শেষ ৩ সেকেন্ডে বা টাইম শেষ হলে অবশিষ্ট ফিনিশিং
+    if (timeLeft <= 3.0 && activeFlags.length > 1) {
+      activeGapSize = Math.PI * 0.8;
+      speedMult = 1.6;
     }
 
-    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.25));
-    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + timeRatio * 0.25));
+    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progressRatio * 0.25));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progressRatio * 0.25));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -1209,7 +1228,6 @@ function gameLoop() {
 
     resolveAllCollisions(activeFlags, 0.45, true);
 
-    // নিরাপদ লুপ: পেছনের দিক থেকে চেক করা
     for (let i = activeFlags.length - 1; i >= 0; i--) {
       let f = activeFlags[i];
       if (!f) continue;
@@ -1218,22 +1236,10 @@ function gameLoop() {
       let dy = f.y - arenaY;
       let dist = Math.hypot(dx, dy) || 1;
       
-      // হালকা প্রাকৃতিক কেন্দ্রাতিগ বল (Natural Centrifugal Drift)
-      let drift = 0.08 + timeRatio * 0.08;
-      f.vx += (dx / dist) * drift;
-      f.vy += (dy / dist) * drift;
-
-      // গতি খুব বেশি অস্বাভাবিক যাতে না হয়
-      let currentV = Math.hypot(f.vx, f.vy);
-      if (currentV > 9.0) {
-        f.vx = (f.vx / currentV) * 9.0;
-        f.vy = (f.vy / currentV) * 9.0;
-      }
-
+      // সোজা লিনিয়ার মুভমেন্ট (কোনও সেন্ট্রিফিউগাল ড্রাগ বা দেওয়াল ঘেঁষা টান নেই)
       f.x += f.vx * speedMult;
       f.y += f.vy * speedMult;
       
-      // বাউন্ডারি ও গ্যাপ লজিক
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
@@ -1241,15 +1247,16 @@ function gameLoop() {
         if (inGap) {
             let inYellow = isAngleBetween(fAngle, yStart, yEnd);
             if (inYellow) {
-                // নিয়ন আর্চে লাগলে বাউন্স হবে
+                // নিয়ন আর্চে ধাক্কা খেলে ভেতরে বাউন্স
                 bounceFlag(f, dx, dy, dist); 
             } else {
-                // কোনো কৃত্রিম বাধা নেই! গ্যাপ পেলে সরাসরি বের হয়ে এলিমিনেট হবে
-                if (dist > arenaR + f.r + 6) {
+                // গ্যাপ দিয়ে বের হয়ে গেলে সরাসরি এলিমিনেট
+                if (dist > arenaR + f.r + 4) {
                     eliminate(f); 
                 }
             }
         } else {
+            // সলিড দেওয়ালে লাগলে বিপরীতে সুন্দর বাউন্স
             bounceFlag(f, dx, dy, dist); 
         }
       }
@@ -1270,7 +1277,7 @@ function gameLoop() {
     ctx.stroke();
   }
 
-  // নিচে এলিমিনেটেড ফ্ল্যাগ সাজানো
+  // নিচে ডেড ফ্ল্যাগ সাজানো
   for (let i = 0; i < deadFlags.length; i++) {
       let f = deadFlags[i];
       if (!f.settled) {
@@ -1334,7 +1341,7 @@ function gameLoop() {
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
     let alpha = 1;
-    if (warmupElapsed > 1.6) {
+    if (warmupElapsed > 1.4) {
       alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.6);
     }
 
