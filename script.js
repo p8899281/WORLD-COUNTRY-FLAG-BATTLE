@@ -370,12 +370,14 @@ function speakText(text) {
   if ('speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
-      utterance.volume = masterVolume;
-      utterance.lang = "en-US";
-      window.speechSynthesis.speak(utterance);
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        utterance.pitch = 1.0;
+        utterance.volume = masterVolume;
+        utterance.lang = "en-US";
+        window.speechSynthesis.speak(utterance);
+      }, 50);
     } catch (e) {}
   }
 }
@@ -447,11 +449,8 @@ const countryData = [
 const countryList = countryData.map(([code, name]) => [code, name, codeToFlagEmoji(code)]);
 TOTAL_FLAGS = countryList.length;
 
-// 🚀 EMOJI SPRITE CACHE — ctx.fillText() for color emoji is extremely slow when called
-// ~190 times per frame (font shaping + glyph rasterization runs every single call).
-// We pre-render every flag emoji to a tiny offscreen canvas ONCE, then just drawImage()
-// it every frame. This is the single biggest performance win for smooth 60fps play.
-const EMOJI_SPRITE_SCALE = 3; // internal render resolution multiplier, keeps sprites crisp
+// 🚀 EMOJI SPRITE CACHE
+const EMOJI_SPRITE_SCALE = 3; 
 const emojiSpriteCache = new Map();
 
 function getEmojiSprite(emoji, fontSizePx) {
@@ -537,7 +536,7 @@ function resizeCanvas() {
   viewWidth = rect.width;
   viewHeight = rect.height;
   
-  dpr = Math.min(window.devicePixelRatio || 1, 2); // হাই কোয়ালিটি কিন্তু স্মুথ পারফরম্যান্স (২.৫ থেকে কমিয়ে ২ করা হয়েছে)
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
   
   canvas.width = Math.floor(viewWidth * dpr);
   canvas.height = Math.floor(viewHeight * dpr);
@@ -620,8 +619,6 @@ function updateRoundFooterInfo(currentElapsed = 0) {
 function renderFinalStandings() {
   if (!els.qualifiedList) return;
 
-  // 🏆 লাইভ ফাইনাল স্ট্যান্ডিং: আগে সবাই যারা এখনো একটিভ (ব্যাটেলে টিকে আছে),
-  // তারপর সবচেয়ে সাম্প্রতিক নকআউট থেকে শুরু করে পুরনো নকআউট পর্যন্ত।
   const standings = [];
   for (let i = 0; i < activeFlags.length; i++) {
     let f = activeFlags[i];
@@ -671,7 +668,7 @@ function initGame() {
 
   let currentPool = [];
   if (isFinalRound) {
-    roundDuration = 200; 
+    roundDuration = 180; 
 
     currentPool = qualifiedTeams.map(t => [t.code, t.name, t.emoji]);
     if (currentPool.length < 3) {
@@ -716,7 +713,7 @@ function initGame() {
       y: arenaY + Math.sin(spawnAngle) * spawnDist,
       vx: Math.cos(moveAngle) * speed,
       vy: Math.sin(moveAngle) * speed,
-      r: 10, active: true, settled: false, targetX: 0, targetY: 0, ejecting: false
+      r: 10, active: true, settled: false, targetX: 0, targetY: 0
     };
     flags.push(flagObj);
   }
@@ -765,8 +762,8 @@ function showKnockoutOverlay(flag) {
   speakKnockout(flag.name);
 
   knockoutTimeout = setTimeout(() => {
-    if (activeFlags.length === 1) {
-      declareWinner(activeFlags[0]);
+    if (activeFlags.length <= 1) {
+      if (activeFlags.length === 1) declareWinner(activeFlags[0]);
       return;
     }
 
@@ -816,11 +813,11 @@ function eliminate(flag) {
   }
 
   if (activeFlags.length === 1) {
-      declareWinner(activeFlags[0]);
+    declareWinner(activeFlags[0]);
   }
 }
 
-// 🎉 কনফেটি সেলিব্রেশন সিস্টেম (প্রতিটি রাউন্ডের বিজয়ীর জন্যও সক্রিয়)
+// 🎉 কনফেটি সেলিব্রেশন সিস্টেম
 function startCelebrationConfetti() {
   if (!confettiCtx) return;
   confettiParticles = [];
@@ -943,11 +940,11 @@ function declareWinner(flag) {
       if (els.podium3Name) els.podium3Name.innerText = podiumPlaces.third ? podiumPlaces.third.name : "3rd Place";
 
       if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
-      startCelebrationConfetti(); // গ্র্যান্ড সেলিব্রেশন
+      startCelebrationConfetti();
       return; 
     }
 
-    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড (এখানেও সেলিব্রেশন কনফেটি চলবে)
+    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     if (els.winnerHeading) {
@@ -965,16 +962,11 @@ function declareWinner(flag) {
     if (els.podiumContainer) els.podiumContainer.classList.add("hidden");
 
     if (els.winnerOverlay) els.winnerOverlay.classList.remove("hidden");
-    
-    // 🎊 রাউন্ড বিজয়ীর জন্য কনফেটি ব্লাস্ট শুরু
     startCelebrationConfetti();
-    
     recordQualifier(flag);
     
     setTimeout(() => {
         if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
-        
-        // পরের রাউন্ড শুরুর আগে কনফেটি থামানো
         stopCelebrationConfetti();
         
         if (round >= MAX_QUALIFYING_ROUNDS) {
@@ -989,6 +981,18 @@ function declareWinner(flag) {
         startBGM(); 
         requestAnimationFrame(gameLoop);
     }, 5000);
+}
+
+function restartTournament() {
+  stopCelebrationConfetti();
+  if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
+  if (els.podiumContainer) els.podiumContainer.classList.add("hidden");
+  if (els.app) els.app.classList.add("hidden");
+  if (els.startScreen) els.startScreen.classList.remove("hidden");
+  round = 1;
+  isFinalRound = false;
+  qualifiedTeams = [];
+  isPlaying = false;
 }
 
 function recordQualifier(flag) {
@@ -1067,12 +1071,8 @@ function renderLeaderboard() {
   els.qualifiedList.innerHTML = rowsHtml;
 }
 
-// 💥 শুধু রিংয়ে ধাক্কা লাগলেই হালকা বাউন্স সাউন্ড বাজবে
-// 🚀 SPATIAL GRID COLLISION — brute-force O(n²) pairwise checks (193*192/2 ≈ 18,500
-// comparisons every single frame) get slow once flags are packed together, especially
-// during warm-up. Bucketing flags into a uniform grid and only checking neighboring
-// cells keeps this fast and scales much better on weaker phones.
-const COLLISION_CELL = 20;   // == minDist
+// 🚀 SPATIAL GRID COLLISION
+const COLLISION_CELL = 20; 
 const COLLISION_CELL_SQ = 400;
 const collisionGrid = new Map();
 const collisionNeighborOffsets = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 1]];
@@ -1098,10 +1098,10 @@ function resolveCollisionPair(f1, f2, pushFactor, resolveVelocity) {
     if (resolveVelocity) {
       let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
       if (vrel > 0) {
-        f1.vx -= vrel * 1.06 * nx;
-        f1.vy -= vrel * 1.06 * ny;
-        f2.vx += vrel * 1.06 * nx;
-        f2.vy += vrel * 1.06 * ny;
+        f1.vx -= vrel * 1.02 * nx;
+        f1.vy -= vrel * 1.02 * ny;
+        f2.vx += vrel * 1.02 * nx;
+        f2.vy += vrel * 1.02 * ny;
       }
     }
   }
@@ -1161,12 +1161,8 @@ function bounceFlag(f, dx, dy, dist) {
 
   let dot = (f.vx * nx) + (f.vy * ny);
   if (dot > 0) {
-    // 🩹 বাগ ফিক্স: আগে multiplier ছিল 2.02 (মাত্র ~1% এনার্জি গেইন), যেটা
-    // dynamic speed-cap বাড়ানোর আগে clamp-এ ধরা পড়ে হারিয়ে যেত — তাই ধাক্কা
-    // লাগলেও speed বাড়ছে মনে হতো না। এখন 2.10 (~5% গেইন) দিয়ে প্রতিটা
-    // রিং-হিটে স্পষ্টভাবে speed বাড়বে।
-    f.vx -= 2.10 * dot * nx;
-    f.vy -= 2.10 * dot * ny;
+    f.vx -= 2.02 * dot * nx;
+    f.vy -= 2.02 * dot * ny;
     
     let tangX = -ny;
     let tangY = nx;
@@ -1203,11 +1199,9 @@ function gameLoop() {
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
-    const len = activeFlags.length;
-
     resolveAllCollisions(activeFlags, 0.45, false);
 
-    for (let i = 0; i < len; i++) {
+    for (let i = activeFlags.length - 1; i >= 0; i--) {
       let f = activeFlags[i];
       let jitterX = (Math.random() - 0.5) * 4;
       let jitterY = (Math.random() - 0.5) * 4;
@@ -1223,8 +1217,6 @@ function gameLoop() {
         bounceFlag(f, dx, dy, dist);
       }
     }
-
-    resolveAllCollisions(activeFlags, 0.35, false);
 
     if (warmupElapsed >= warmupDuration) {
       isWarmup = false;
@@ -1244,7 +1236,7 @@ function gameLoop() {
 
     updateRoundFooterInfo(elapsed);
 
-    let targetDuration = isFinalRound ? 195.0 : 42.0;
+    let targetDuration = isFinalRound ? 175.0 : 42.0;
     let timeRatio = Math.min(1, elapsed / targetDuration);
 
     let outwardPush = 0.30 + Math.pow(timeRatio, 1.2) * 0.85;
@@ -1254,19 +1246,24 @@ function gameLoop() {
     if (isFinalRound) {
       if (activeFlags.length <= 10) {
         activeGapSize = baseGapSize * 0.5;
-      } else if (elapsed >= 160.0) {
-        let lateRatio = Math.min(1, (elapsed - 160.0) / 30.0);
-        activeGapSize = baseGapSize * (1 + lateRatio * 1.1);
+      } else if (elapsed >= 150.0) {
+        let lateRatio = Math.min(1, (elapsed - 150.0) / 25.0);
+        activeGapSize = baseGapSize * (1 + lateRatio * 1.2);
       }
     } else if (elapsed >= 32.0) {
       let lateRatio = Math.min(1, (elapsed - 32.0) / 9.0);
-      activeGapSize = baseGapSize * (1 + lateRatio * 1.1);
+      activeGapSize = baseGapSize * (1 + lateRatio * 1.2);
     }
 
-    // 🩹 বাগ ফিক্স: আগে সাদা (white) ও নীল (blue/yellow) দুটোই একই দিকে (+) ঘুরত।
-    // এখন নীল আর্চটা উলটো দিকে (-) ঘুরবে, যেমনটা চাওয়া হয়েছে।
+    // টাইম শেষ হয়ে গেলে দ্রুত বের করার লজিক (Infinite loop fix)
+    if (timeLeft <= 0 && activeFlags.length > 1) {
+      outwardPush = 2.8;
+      speedMult = 5.5;
+      activeGapSize = Math.PI; 
+    }
+
     whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + timeRatio * 0.35));
-    yellowAngle = normalizeAngle(yellowAngle - yellowSpeed * (1 + timeRatio * 0.35));
+    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + timeRatio * 0.35));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -1282,38 +1279,28 @@ function gameLoop() {
       targetMaxAlive = 1;
     }
 
-    const len = activeFlags.length;
-
     resolveAllCollisions(activeFlags, 0.48, true);
 
-    for (let i = 0; i < activeFlags.length; i++) {
+    // নিরাপদ লুপ: পেছনের দিক থেকে চেক করা
+    for (let i = activeFlags.length - 1; i >= 0; i--) {
       let f = activeFlags[i];
-      let dx0 = f.x - arenaX;
-      let dy0 = f.y - arenaY;
-      let dist0 = Math.hypot(dx0, dy0) || 1;
-      
-      f.vx += (dx0 / dist0) * outwardPush;
-      f.vy += (dy0 / dist0) * outwardPush;
+      if (!f) continue;
 
-      // 🩹 গতিশীল speed cap: রাউন্ড যত এগোয় ম্যাক্স স্পিড তত বাড়ে, ফলে রিং-এ
-      // ধাক্কা লেগে যে ছোট এনার্জি বুস্ট হয় সেটা আটকে (clamp) হারিয়ে না গিয়ে
-      // চোখে দেখা যায় — অর্থাৎ ধাক্কা লাগলে সত্যিকারের speed বৃদ্ধি বোঝা যাবে।
-      let maxV = 15 + timeRatio * 15;
+      let dx = f.x - arenaX;
+      let dy = f.y - arenaY;
+      let dist = Math.hypot(dx, dy) || 1;
+      
+      f.vx += (dx / dist) * outwardPush;
+      f.vy += (dy / dist) * outwardPush;
+
       let currentV = Math.hypot(f.vx, f.vy);
-      if (currentV > maxV) {
-        f.vx = (f.vx / currentV) * maxV;
-        f.vy = (f.vy / currentV) * maxV;
+      if (currentV > 25.0) {
+        f.vx = (f.vx / currentV) * 25.0;
+        f.vy = (f.vy / currentV) * 25.0;
       }
 
       f.x += f.vx * (speedMult * 0.28);
       f.y += f.vy * (speedMult * 0.28);
-
-      // 🩹 বাগ ফিক্স: আগে dx/dy/dist মুভমেন্টের *আগের* (stale) পজিশন থেকে হিসাব
-      // হচ্ছিল, তাই রিং/গ্যাপ বাউন্স-এলিমিনেট ডিসিশন সবসময় ১ ফ্রেম পুরনো
-      // অবস্থানের উপর ভিত্তি করে হতো — এখন মুভ করার *পরের* আসল পজিশন থেকে হিসাব হচ্ছে।
-      let dx = f.x - arenaX;
-      let dy = f.y - arenaY;
-      let dist = Math.hypot(dx, dy) || 1;
       
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
@@ -1322,41 +1309,21 @@ function gameLoop() {
         if (inGap) {
             let inYellow = isAngleBetween(fAngle, yStart, yEnd);
             if (inYellow) {
-                f.ejecting = false;
                 bounceFlag(f, dx, dy, dist); 
             } else {
-                if (activeFlags.length > targetMaxAlive) {
-                    // 🩹 বাগ ফিক্স: আগে এখানে flag রিং-এর কিনারায় কোনো বাউন্স বা পুশ
-                    // ছাড়াই "আটকে" থাকতো (dist > arenaR+f.r+2 না হওয়া পর্যন্ত কিছুই
-                    // হতো না) — ফলে দেখতে unrealistic/glitchy লাগতো। এখন গ্যাপ দিয়ে
-                    // প্রথমবার বের হওয়ার সময়েই একটা জোরালো outward ইজেকশন পুশ দেওয়া
-                    // হচ্ছে, যাতে flag টা বাস্তবসম্মতভাবে ছিটকে বের হয়ে যায়।
-                    if (!f.ejecting) {
-                        f.ejecting = true;
-                        let nx = dx / dist, ny = dy / dist;
-                        f.vx += nx * 9;
-                        f.vy += ny * 9;
-                    }
-                    if (dist > arenaR + f.r * 1.4) {
+                if (activeFlags.length > targetMaxAlive || timeLeft <= 0) {
+                    if (dist > arenaR + f.r + 2) {
                         eliminate(f); 
                     }
                 } else {
-                    f.ejecting = false;
                     bounceFlag(f, dx, dy, dist); 
                 }
             }
         } else {
-            f.ejecting = false;
             bounceFlag(f, dx, dy, dist); 
         }
       }
     }
-
-    // 🩹 বাগ ফিক্স: flag-flag কলিশন আগে শুধু মুভমেন্টের *আগে* একবার চেক হতো,
-    // তাই দ্রুতগতির flag গুলো একে অপরকে পুরোপুরি ক্রস করে যেত (tunneling) —
-    // কোনো ধাক্কাই লাগতো না। মুভ করার পরেও একবার resolve করায় এখন flag গুলো
-    // বাস্তবেই একে অপরের গায়ে ধাক্কা খাবে।
-    resolveAllCollisions(activeFlags, 0.42, true);
 
     // ১. সাদা রিং
     ctx.beginPath();
@@ -1373,7 +1340,7 @@ function gameLoop() {
     ctx.stroke();
   }
 
-  // নিচে এলিমিনেটেড ফ্ল্যাগ সাজানো
+  // নিচে ডেড ফ্ল্যাগ সাজানো
   for (let i = 0; i < deadFlags.length; i++) {
       let f = deadFlags[i];
       if (!f.settled) {
@@ -1413,14 +1380,14 @@ function gameLoop() {
   ctx.lineCap = "round";
   ctx.stroke();
 
-  // 🏷️ ৪. আল্ট্রা-শার্প টেক্সট
+  // 🏷️ ৪. কাউন্টার টেক্সট
   ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 7);
 
-  // 🎨 ইমোজি রেন্ডারিং (cached sprite blitting — fillText নয়)
+  // 🎨 ইমোজি রেন্ডারিং
   ctx.globalAlpha = 0.85; 
   for (let i = 0; i < deadFlags.length; i++) {
       let f = deadFlags[i];
@@ -1433,7 +1400,7 @@ function gameLoop() {
       drawFlagEmoji(ctx, f.emoji, f.x, f.y, 23);
   }
 
-  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট (সব ফ্ল্যাগের সবার ওপরে রেন্ডার হবে)
+  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
     let alpha = 1;
@@ -1483,6 +1450,7 @@ window.setTournamentRounds = setTournamentRounds;
 window.handleBgmSelectChange = handleBgmSelectChange;
 window.changeVolume = changeVolume;
 window.beginBattle = beginBattle;
+window.restartTournament = restartTournament;
 
 document.addEventListener("click", unlockAudio);
 document.addEventListener("touchstart", unlockAudio);
