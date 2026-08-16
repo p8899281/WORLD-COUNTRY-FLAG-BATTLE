@@ -107,7 +107,7 @@ let leaderboardInterval = null;
 // 🎵 AUDIO SYSTEM
 let audioCtx = null;
 let lastSoundTime = 0;
-let masterVolume = 0.7;
+let masterVolume = 0.85;
 
 const customAudioPlayer = new Audio();
 customAudioPlayer.loop = true;
@@ -136,7 +136,7 @@ function handleBgmSelectChange() {
 }
 
 function changeVolume(val) {
-  masterVolume = parseFloat(val) || 0.7;
+  masterVolume = parseFloat(val) || 0.85;
   customAudioPlayer.volume = masterVolume;
   if (els.volumeValueText) {
     els.volumeValueText.innerText = `${Math.round(masterVolume * 100)}%`;
@@ -233,14 +233,15 @@ function startBGM() {
         melodyOsc.type = track.type;
         melodyOsc.frequency.setValueAtTime(freq, now);
 
-        const melVol = (track.type === "square" || track.type === "sawtooth") ? 0.025 : 0.045;
+        // 🎶 ব্যাকগ্রাউন্ড মিউজিকের ভলিউম বাড়ানো হয়েছে
+        const melVol = (track.type === "square" || track.type === "sawtooth") ? 0.065 : 0.11;
         melodyGain.gain.setValueAtTime(melVol * masterVolume, now);
-        melodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+        melodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
 
         melodyOsc.connect(melodyGain);
         melodyGain.connect(audioCtx.destination);
         melodyOsc.start(now);
-        melodyOsc.stop(now + 0.13);
+        melodyOsc.stop(now + 0.15);
 
         if (bgmStep % 2 === 0) {
           const bassOsc = audioCtx.createOscillator();
@@ -250,13 +251,14 @@ function startBGM() {
           bassOsc.type = "triangle";
           bassOsc.frequency.setValueAtTime(bassFreq, now);
 
-          bassGain.gain.setValueAtTime(0.05 * masterVolume, now);
-          bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+          // 🥁 বেইসের ভলিউম বাড়ানো হয়েছে
+          bassGain.gain.setValueAtTime(0.12 * masterVolume, now);
+          bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
 
           bassOsc.connect(bassGain);
           bassGain.connect(audioCtx.destination);
           bassOsc.start(now);
-          bassOsc.stop(now + 0.23);
+          bassOsc.stop(now + 0.25);
         }
 
         bgmStep++;
@@ -285,26 +287,27 @@ function playSound(type, intensity = 1) {
     const now = audioCtx.currentTime;
 
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 22) return;
+      if (nowTime - lastSoundTime < 24) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const pitch = 460 + Math.random() * 90 + Math.min(intensity, 4) * 25;
+      const pitch = 450 + Math.random() * 80;
       osc.type = "sine";
       
       osc.frequency.setValueAtTime(pitch, now);
-      osc.frequency.exponentialRampToValueAtTime(110, now + 0.035);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.03);
       
-      const vol = Math.min(0.065, (0.015 + intensity * 0.015) * masterVolume);
+      // 🔉 বাউন্স সাউন্ড ইফেক্ট হালকা কমানো হয়েছে
+      const vol = Math.min(0.024, (0.005 + intensity * 0.005) * masterVolume);
       gain.gain.setValueAtTime(vol, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.038);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.032);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.040);
+      osc.stop(now + 0.035);
 
     } else if (type === "out") {
       const osc = audioCtx.createOscillator();
@@ -315,7 +318,8 @@ function playSound(type, intensity = 1) {
       osc.frequency.exponentialRampToValueAtTime(750, now + 0.045);
       osc.frequency.exponentialRampToValueAtTime(120, now + 0.14);
       
-      const outVol = Math.min(0.35, 0.26 * masterVolume);
+      // 🔉 আউট সাউন্ড ইফেক্ট হালকা কমানো হয়েছে
+      const outVol = Math.min(0.14, 0.10 * masterVolume);
       gain.gain.setValueAtTime(outVol, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
       
@@ -335,7 +339,7 @@ function playSound(type, intensity = 1) {
         osc.frequency.setValueAtTime(freq, now + idx * 0.10);
         
         gain.gain.setValueAtTime(0.01 * masterVolume, now + idx * 0.10);
-        gain.gain.exponentialRampToValueAtTime(0.20 * masterVolume, now + idx * 0.10 + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.18 * masterVolume, now + idx * 0.10 + 0.04);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.10 + 1.8);
         
         osc.connect(gain);
@@ -354,7 +358,7 @@ function playSound(type, intensity = 1) {
         osc.frequency.setValueAtTime(freq, now + idx * 0.08);
         
         gain.gain.setValueAtTime(0.01 * masterVolume, now + idx * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.28 * masterVolume, now + idx * 0.08 + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.24 * masterVolume, now + idx * 0.08 + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 2.5);
         
         osc.connect(gain);
@@ -839,14 +843,12 @@ function eliminate(flag) {
   if (isFinalRound) {
     renderFinalStandings();
 
-    // 🥉 ৩য় স্থান সেলিব্রেশন (যখন ৩ জনের মধ্যে প্রথমজন বের হবে)
     if (activeFlags.length === 2) {
       podiumPlaces.third = flag;
       showMedalOverlay(flag, "🥉 3RD PLACE - BRONZE MEDAL 🥉", "3rd place bronze medal");
       return;
     }
 
-    // 🥈 ২য় স্থান সেলিব্রেশন (যখন ২ জনের মধ্যে একজন বের হবে)
     if (activeFlags.length === 1) {
       podiumPlaces.second = flag;
       showMedalOverlay(flag, "🥈 2ND PLACE - RUNNER UP 🥈", "2nd place silver medal", () => {
@@ -855,7 +857,6 @@ function eliminate(flag) {
       return;
     }
 
-    // ❌ ফাইনাল রাউন্ডে ১০ জনের পর থেকে নকআউট অ্যানাউন্সমেন্ট
     if (activeFlags.length >= 2 && activeFlags.length < 10) {
       showKnockoutOverlay(flag);
       return;
@@ -958,7 +959,7 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী (🥇 Champion)
+    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
