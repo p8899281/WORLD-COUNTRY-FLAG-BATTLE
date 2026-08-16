@@ -47,8 +47,8 @@ let yellowAngle = 0;
 const baseGapSize = Math.PI / 3.4;   
 const yellowSize = Math.PI / 4.5;    
 
-const whiteSpeed = 0.035; 
-const yellowSpeed = 0.075; 
+const whiteSpeed = 0.038; 
+const yellowSpeed = 0.082; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
@@ -285,26 +285,26 @@ function playSound(type, intensity = 1) {
     const now = audioCtx.currentTime;
 
     if (type === "bounce") {
-      if (nowTime - lastSoundTime < 35) return;
+      if (nowTime - lastSoundTime < 30) return;
       lastSoundTime = nowTime;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       
-      const pitch = 450 + Math.random() * 60 + Math.min(intensity, 3) * 15;
+      const pitch = 480 + Math.random() * 80 + Math.min(intensity, 4) * 20;
       osc.type = "sine";
       
       osc.frequency.setValueAtTime(pitch, now);
-      osc.frequency.exponentialRampToValueAtTime(110, now + 0.03);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.035);
       
-      const vol = Math.min(0.045, (0.012 + intensity * 0.008) * masterVolume);
+      const vol = Math.min(0.055, (0.015 + intensity * 0.01) * masterVolume);
       gain.gain.setValueAtTime(vol, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.032);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
       
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.035);
+      osc.stop(now + 0.038);
 
     } else if (type === "out") {
       const osc = audioCtx.createOscillator();
@@ -700,11 +700,10 @@ function initGame() {
     let country = currentPool[i];
     
     let spawnAngle = Math.random() * Math.PI * 2;
-    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.65);
+    let spawnDist = Math.sqrt(Math.random()) * (arenaR * 0.70);
     
     let moveAngle = Math.random() * Math.PI * 2;
-    // 🎯 স্বাভাবিক ও বাস্তবসম্মত গতিবেগ
-    let speed = 2.0 + Math.random() * 1.5;
+    let speed = 3.5 + Math.random() * 2.0;
     
     let flagObj = {
       id: i, code: country[0], name: country[1], emoji: country[2],
@@ -712,7 +711,7 @@ function initGame() {
       y: arenaY + Math.sin(spawnAngle) * spawnDist,
       vx: Math.cos(moveAngle) * speed,
       vy: Math.sin(moveAngle) * speed,
-      r: 10, active: true, settled: false, targetX: 0, targetY: 0
+      r: 11, active: true, settled: false, targetX: 0, targetY: 0
     };
     flags.push(flagObj);
   }
@@ -1057,45 +1056,50 @@ function renderLeaderboard() {
   els.qualifiedList.innerHTML = rowsHtml;
 }
 
-// 💥 বাস্তবসম্মত ফ্ল্যাগ কোলিশন
-const COLLISION_CELL = 20;
-const COLLISION_CELL_SQ = 400;
+// 💥 শক্তিশালী ও বাস্তবসম্মত ইলাস্টিক ফ্ল্যাগ কোলিশন (ডায়নামিক সেপারেশন)
+const COLLISION_DIST = 22;
+const COLLISION_DIST_SQ = COLLISION_DIST * COLLISION_DIST;
+const COLLISION_CELL = 24;
 const collisionGrid = new Map();
 const collisionNeighborOffsets = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 1]];
 
-function resolveCollisionPair(f1, f2, pushFactor, resolveVelocity) {
+function resolveCollisionPair(f1, f2) {
   let dx = f2.x - f1.x;
-  if (dx > COLLISION_CELL || dx < -COLLISION_CELL) return;
+  if (dx > COLLISION_DIST || dx < -COLLISION_DIST) return;
   let dy = f2.y - f1.y;
-  if (dy > COLLISION_CELL || dy < -COLLISION_CELL) return;
+  if (dy > COLLISION_DIST || dy < -COLLISION_DIST) return;
 
   let distSq = dx * dx + dy * dy;
-  if (distSq < COLLISION_CELL_SQ && distSq > 0.0001) {
+  if (distSq < COLLISION_DIST_SQ && distSq > 0.0001) {
     let dist = Math.sqrt(distSq);
-    let overlap = COLLISION_CELL - dist;
+    let overlap = COLLISION_DIST - dist;
     let nx = dx / dist;
     let ny = dy / dist;
 
-    // ওভারল্যাপ মৃদুভাবে সরানো
-    f1.x -= nx * overlap * pushFactor;
-    f1.y -= ny * overlap * pushFactor;
-    f2.x += nx * overlap * pushFactor;
-    f2.y += ny * overlap * pushFactor;
+    // ওভারল্যাপ তাৎক্ষণিক ১০০% আলাদা করা
+    let sep = overlap * 0.5;
+    f1.x -= nx * sep;
+    f1.y -= ny * sep;
+    f2.x += nx * sep;
+    f2.y += ny * sep;
 
-    if (resolveVelocity) {
-      let vrel = (f1.vx - f2.vx) * nx + (f1.vy - f2.vy) * ny;
-      if (vrel > 0) {
-        let impulse = 0.90 * vrel;
-        f1.vx -= impulse * nx;
-        f1.vy -= impulse * ny;
-        f2.vx += impulse * nx;
-        f2.vy += impulse * ny;
-      }
+    // পূর্ণাঙ্গ ২ডি ইলাস্টিক ভরবেগ এক্সচেঞ্জ (ছিটকে যাওয়া)
+    let kx = f1.vx - f2.vx;
+    let ky = f1.vy - f2.vy;
+    let p = (nx * kx + ny * ky);
+
+    if (p > 0) {
+      let elasticity = 0.96;
+      let impulse = p * elasticity;
+      f1.vx -= impulse * nx;
+      f1.vy -= impulse * ny;
+      f2.vx += impulse * nx;
+      f2.vy += impulse * ny;
     }
   }
 }
 
-function resolveAllCollisions(list, pushFactor, resolveVelocity) {
+function resolveAllCollisions(list) {
   collisionGrid.clear();
 
   for (let i = 0; i < list.length; i++) {
@@ -1124,7 +1128,7 @@ function resolveAllCollisions(list, pushFactor, resolveVelocity) {
       if (isSelf) {
         for (let i = 0; i < cellFlags.length; i++) {
           for (let j = i + 1; j < cellFlags.length; j++) {
-            resolveCollisionPair(cellFlags[i], cellFlags[j], pushFactor, resolveVelocity);
+            resolveCollisionPair(cellFlags[i], cellFlags[j]);
           }
         }
       } else {
@@ -1132,7 +1136,7 @@ function resolveAllCollisions(list, pushFactor, resolveVelocity) {
         if (!neighborCell) continue;
         for (let i = 0; i < cellFlags.length; i++) {
           for (let j = 0; j < neighborCell.length; j++) {
-            resolveCollisionPair(cellFlags[i], neighborCell[j], pushFactor, resolveVelocity);
+            resolveCollisionPair(cellFlags[i], neighborCell[j]);
           }
         }
       }
@@ -1140,28 +1144,35 @@ function resolveAllCollisions(list, pushFactor, resolveVelocity) {
   });
 }
 
-// 🎯 রিংয়ের দেয়ালে বাস্তবসম্মত বাউন্স
+// 🎯 রিংয়ের দেয়ালে দ্রুত ও স্পিডি বাউন্স (গায়ে লেগে থাকা বন্ধ করার লজিক)
 function bounceFlag(f, dx, dy, dist) {
-  let nx = dx / dist;
+  let nx = dx / dist; // কেন্দ্র থেকে বাইরের দিকের ইউনিট ভেক্টর
   let ny = dy / dist;
   
-  f.x = arenaX + nx * (arenaR - f.r - 0.2);
-  f.y = arenaY + ny * (arenaR - f.r - 0.2);
+  // ফ্ল্যাগকে রিংয়ের প্রাচীর থেকে কিছুটা ভেতরে সরিয়ে আনা যাতে গায়ে লেগে না থাকে
+  f.x = arenaX + nx * (arenaR - f.r - 2.0);
+  f.y = arenaY + ny * (arenaR - f.r - 2.0);
 
   let dot = (f.vx * nx) + (f.vy * ny);
-  if (dot > 0) {
-    let restitution = 0.88;
+  if (dot > 0) { // বাইরে যাওয়ার সময় ধাক্কা লেগে কেন্দ্রের দিকে বাউন্স
+    let restitution = 1.05; // আকর্ষণীয় ও দ্রুত রিফ্লেকশন
     f.vx -= (1 + restitution) * dot * nx;
     f.vy -= (1 + restitution) * dot * ny;
     
-    // সামান্য প্রাকৃতিক ডিফ্লেকশন (অতিরিক্ত জাম্প বাদ দিয়ে)
+    // ন্যাচারাল ডিফ্লেকশন স্প্রেড
     let tangX = -ny;
     let tangY = nx;
-    let scatter = (Math.random() - 0.5) * 0.25;
+    let scatter = (Math.random() - 0.5) * 0.9;
     f.vx += tangX * scatter;
     f.vy += tangY * scatter;
     
-    const speed = Math.abs(dot);
+    // মিনিমাম বাউন্স স্পিড নিশ্চিত করা যাতে রিং থেকে দূরে ছিটকে যায়
+    let speed = Math.hypot(f.vx, f.vy);
+    if (speed < 4.2) {
+      f.vx = (f.vx / (speed || 1)) * 4.5;
+      f.vy = (f.vy / (speed || 1)) * 4.5;
+    }
+
     if (speed > 0.4) {
       playSound("bounce", speed);
     }
@@ -1175,7 +1186,7 @@ function gameLoop() {
   ctx.fillRect(0, 0, viewWidth, viewHeight);
 
   // -------------------------------------------------------------
-  // ⚡ ১. ওয়ার্ম-আপ ফেজ (স্মুথ ড্রাফটিং, কোনো ঝাঁকুনি ছাড়া)
+  // ⚡ ১. ওয়ার্ম-আপ ফেজ
   // -------------------------------------------------------------
   if (isWarmup) {
     let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
@@ -1190,13 +1201,14 @@ function gameLoop() {
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
 
-    const len = activeFlags.length;
-    resolveAllCollisions(activeFlags, 0.4, true);
+    // দুটি পাসে নিখুঁত কোলিশন চেক
+    resolveAllCollisions(activeFlags);
+    resolveAllCollisions(activeFlags);
 
-    for (let i = 0; i < len; i++) {
+    for (let i = 0; i < activeFlags.length; i++) {
       let f = activeFlags[i];
-      f.x += f.vx * 0.7;
-      f.y += f.vy * 0.7;
+      f.x += f.vx;
+      f.y += f.vy;
 
       let dx = f.x - arenaX;
       let dy = f.y - arenaY;
@@ -1228,8 +1240,8 @@ function gameLoop() {
     let targetDuration = isFinalRound ? 195.0 : 42.0;
     let timeRatio = Math.min(1, elapsed / targetDuration);
 
-    // সময় বাড়ার সাথে সাথে কিছুটা মৃদু আউটওয়ার্ড ফোর্স
-    let outwardPush = 0.03 + Math.pow(timeRatio, 1.4) * 0.08;
+    // মৃদু ড্রাফট যাতে ফ্ল্যাগ মুক্তভাবে ছোটাছুটি করে
+    let outwardPush = 0.015 + Math.pow(timeRatio, 1.3) * 0.045;
 
     let activeGapSize = baseGapSize;
     if (isFinalRound) {
@@ -1253,7 +1265,9 @@ function gameLoop() {
     let yStart = yellowAngle;
     let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-    resolveAllCollisions(activeFlags, 0.45, true);
+    // ডবল ইটারেশনে স্মুথ ফ্ল্যাগ সেপারেশন
+    resolveAllCollisions(activeFlags);
+    resolveAllCollisions(activeFlags);
 
     for (let i = activeFlags.length - 1; i >= 0; i--) {
       let f = activeFlags[i];
@@ -1264,10 +1278,10 @@ function gameLoop() {
       f.vx += (dx / dist) * outwardPush;
       f.vy += (dy / dist) * outwardPush;
 
-      // 🎯 বেগ নিয়ন্ত্রণ (Unrealistic গতি আটকে স্বাভাবিক রাখা)
+      // স্পিড ক্যাপ (স্মুথ ও আকর্ষণীয় গতির ব্যালেন্স)
       let currentV = Math.hypot(f.vx, f.vy);
-      let maxSpeed = 3.8 + timeRatio * 2.2;
-      let minSpeed = 1.8;
+      let maxSpeed = 5.2 + timeRatio * 1.8;
+      let minSpeed = 3.0;
 
       if (currentV > maxSpeed) {
         f.vx = (f.vx / currentV) * maxSpeed;
@@ -1280,19 +1294,19 @@ function gameLoop() {
       f.x += f.vx;
       f.y += f.vy;
       
-      // 🚪 রিং বর্ডার ও গ্যাপ থেকে বের হওয়ার লজিক
+      // 🚪 দেয়াল বাউন্স বনাম ওপেন গ্যাপ দিয়ে রিং থেকে বের হওয়া
       if (dist > arenaR - f.r) {
         let fAngle = normalizeAngle(Math.atan2(dy, dx));
         let inGap = isAngleBetween(fAngle, gStart, gEnd);
         let inYellow = isAngleBetween(fAngle, yStart, yEnd);
 
+        // খোলা মুখ দিয়ে পার হলে বাইরে চলে যাবে
         if (inGap && !inYellow) {
-          // খোলা মুখ দিয়ে বাস্তবসম্মতভাবে বাইরে চলে যাওয়া
-          if (dist > arenaR + f.r + 10) {
+          if (dist > arenaR + f.r + 6) {
             eliminate(f);
           }
         } else {
-          // রিংয়ের দেয়ালে বা নীল শিল্ডে ধাক্কা খেয়ে ফিরে আসা
+          // রিংয়ের দেয়ালে জোরে বাউন্স খেয়ে সেন্টারের দিকে ফিরে আসবে
           bounceFlag(f, dx, dy, dist);
         }
       }
