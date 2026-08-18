@@ -3,8 +3,9 @@
   --theme-green: #00ff66;
   --theme-yellow: #ffd23f;
   --theme-blue: #00d2ff;
+  --theme-red: #ff4444;
   --text-main: #ffffff;
-  --board-bg: rgba(6, 40, 23, 0.75);
+  --board-bg: rgba(6, 32, 20, 0.75);
 }
 
 * { 
@@ -94,7 +95,6 @@ body {
 .start-title { font-size: 19px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 4px; }
 .start-underline { width: 140px; height: 1px; background: rgba(255, 255, 255, 0.25); margin-bottom: 12px; }
 
-/* 🔢 রাউন্ড সিলেক্টর স্টাইল */
 .rounds-selector-box {
   margin-bottom: 12px;
   display: flex;
@@ -138,7 +138,6 @@ body {
   box-shadow: 0 0 12px rgba(255, 210, 63, 0.6);
 }
 
-/* 🎵 মিউজিক সেটিংস বক্স */
 .music-settings-box {
   background: rgba(6, 40, 23, 0.65);
   border: 1px solid rgba(0, 255, 102, 0.35);
@@ -261,18 +260,22 @@ body {
 
 .hidden { display: none !important; }
 
+/* Main App Container */
 #app { 
   background-color: var(--bg-color); 
   display: flex; 
   flex-direction: column; 
-  padding: 10px 12px; 
+  padding: 8px 12px; 
   position: relative; 
 }
 
-/* 📱 1. MOBILE MODE (Portrait 9:16 - 1080x1920 Ratio) */
+.top-header { text-align: center; margin-bottom: 4px; flex-shrink: 0; }
+.title { font-size: 18px; font-weight: 900; letter-spacing: 1.5px; color: #fff; }
+.subtitle { font-size: 12px; color: var(--theme-yellow); font-weight: 700; margin-top: 2px; }
+
+/* 📱 1. MOBILE MODE (Portrait 9:16) */
 body.mobile-mode #app { 
   aspect-ratio: 9 / 16;
-  height: 100vh;
   height: 100dvh;
   max-width: calc(100dvh * (9 / 16));
   width: 100%;
@@ -281,50 +284,103 @@ body.mobile-mode #app {
   border-right: 2px solid #1a1a1a; 
 }
 
-/* 📟 2. TABLET MODE (Landscape 16:9 - 1920x1080 Ratio) */
+/* 💻 3. PC MODE (আগের মতো অরিজিনাল স্ট্যান্ডার্ড লেআউট) */
+body.pc-mode #app { 
+  max-width: 850px; 
+  width: 100%;
+  padding: 12px 16px; 
+  border-radius: 16px; 
+  border: 1px solid rgba(0,255,102,0.4); 
+  margin: auto; 
+  height: 96dvh;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+
+/* মোবাইল ও পিসি মোডে ওপর-নিচ (Vertical) লেআউট */
+body.mobile-mode .game-content-layout,
+body.pc-mode .game-content-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+}
+
+body.mobile-mode .qualified-board,
+body.pc-mode .qualified-board {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+body.mobile-mode .eliminated-board,
+body.pc-mode .eliminated-board {
+  display: none !important; /* পিসি ও মোবাইলে ডানের লিস্ট বন্ধ থাকবে */
+}
+
+/* 📟 2. TABLET MODE (শুধুমাত্র ট্যাবলেটে ল্যান্ডস্কেপ ৩-কলাম লেআউট) */
 body.tablet-mode #app { 
   aspect-ratio: 16 / 9;
   width: 100vw;
   max-width: calc(100dvh * (16 / 9));
-  height: 100vh;
   height: 100dvh;
   max-height: calc(100vw * (9 / 16));
   margin: auto;
-  padding: 12px 24px;
+  padding: 10px 16px;
   border-radius: 12px;
   border: 1.5px solid rgba(0, 255, 102, 0.35); 
   box-shadow: 0 0 35px rgba(0,0,0,0.75); 
 }
 
-/* 💻 3. PC MODE (Desktop Standard) */
-body.pc-mode #app { 
-  max-width: 850px; 
+body.tablet-mode .game-content-layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
   width: 100%;
-  padding: 14px; 
-  border-radius: 16px; 
-  border: 1px solid rgba(0,255,102,0.4); 
-  margin: auto; 
-  height: 96vh;
-  height: 96dvh;
-  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  gap: 12px;
+  overflow: hidden;
 }
 
-.top-header { text-align: center; margin-bottom: 4px; }
-.title { font-size: 19px; font-weight: 900; letter-spacing: 1.5px; color: #fff;}
-.subtitle { font-size: 13px; color: var(--theme-yellow); font-weight: 700; margin-top: 2px; }
+body.tablet-mode .qualified-board {
+  width: 180px;
+  height: 100%;
+  flex-shrink: 0;
+}
 
-/* 🏆 QUALIFIED BOARD & FOOTER BAR */
+body.tablet-mode .eliminated-board {
+  display: flex !important;
+  width: 180px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+/* 🏆 QUALIFIED BOARD */
 .qualified-board { 
   background: var(--board-bg); 
-  border: 1.5px solid rgba(0, 255, 102, 0.3); 
+  border: 1.5px solid rgba(0, 255, 102, 0.35); 
   border-radius: 10px; 
-  padding: 6px 10px; 
-  margin-bottom: 6px; 
+  padding: 8px 10px; 
+  display: flex;
+  flex-direction: column;
   backdrop-filter: blur(4px);
+  overflow: hidden;
 }
 
-.board-title { text-align: center; font-weight: 800; margin-bottom: 4px; font-size: 11px; letter-spacing: 1px; color: var(--theme-green); }
-.board-list { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.board-title { 
+  text-align: center; 
+  font-weight: 800; 
+  margin-bottom: 6px; 
+  font-size: 11px; 
+  letter-spacing: 1px; 
+  color: var(--theme-green); 
+}
+
+.board-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 4px; 
+  overflow-y: auto; 
+  flex: 1;
+}
 
 .board-row { 
   display: flex; 
@@ -333,31 +389,103 @@ body.pc-mode #app {
   font-size: 11px; 
   font-weight: 700; 
   background: rgba(0,255,102,0.08); 
-  padding: 3px 8px; 
+  padding: 4px 8px; 
   border-radius: 4px; 
-  height: 20px;
+  height: 22px;
 }
 
 .board-row.empty-row { background: transparent; border: none; }
-.rank { color: var(--theme-green); width: 26px; flex-shrink: 0; }
+.rank { color: var(--theme-green); width: 24px; flex-shrink: 0; }
 .country-name { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
 .win-count { color: var(--theme-yellow); flex-shrink: 0; }
 
 .board-footer {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-top: 4px;
-  padding-top: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
   border-top: 1px dashed rgba(0, 255, 102, 0.25);
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.5px;
+}
+
+body.tablet-mode .board-footer {
+  flex-direction: column;
+  gap: 3px;
 }
 
 .rounds-status { color: var(--theme-yellow); }
 .final-countdown { color: var(--theme-blue); text-shadow: 0 0 6px rgba(0, 210, 255, 0.5); }
 
+/* ❌ ডান পাশের ELIMINATED BOARD */
+.eliminated-board {
+  background: rgba(35, 8, 12, 0.75);
+  border: 1.5px solid rgba(255, 68, 68, 0.35);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(4px);
+  overflow: hidden;
+}
+
+.eliminated-board .board-title {
+  color: var(--theme-red);
+  text-align: center;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+
+.eliminated-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 2px;
+}
+
+.eliminated-list::-webkit-scrollbar,
+.board-list::-webkit-scrollbar {
+  width: 3px;
+}
+
+.eliminated-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 68, 68, 0.4);
+  border-radius: 3px;
+}
+
+.board-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 102, 0.4);
+  border-radius: 3px;
+}
+
+.elim-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 50, 50, 0.08);
+  border-left: 2px solid var(--theme-red);
+  padding: 3px 6px;
+  border-radius: 4px;
+  height: 22px;
+  color: #e5e5e5;
+  animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.elim-flag { font-size: 13px; }
+.elim-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+
+/* ⚔️ Arena Container */
 .arena-container { 
   position: relative; 
   flex: 1; 
@@ -365,6 +493,7 @@ body.pc-mode #app {
   justify-content: center; 
   align-items: center; 
   width: 100%;
+  height: 100%;
   overflow: hidden; 
 }
 
