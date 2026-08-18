@@ -26,6 +26,7 @@ const els = {
   podium3Name: document.getElementById("podium3Name"),
   boardHeading: document.getElementById("boardHeading"),
   qualifiedList: document.getElementById("qualifiedList"),
+  eliminatedList: document.getElementById("eliminatedList"),
   roundProgressText: document.getElementById("roundProgressText"),
   finalCountdownText: document.getElementById("finalCountdownText"),
   timerText: document.getElementById("timerText"),
@@ -233,7 +234,6 @@ function startBGM() {
         melodyOsc.type = track.type;
         melodyOsc.frequency.setValueAtTime(freq, now);
 
-        // 🎶 ব্যাকগ্রাউন্ড মিউজিকের ভলিউম বাড়ানো হয়েছে
         const melVol = (track.type === "square" || track.type === "sawtooth") ? 0.065 : 0.11;
         melodyGain.gain.setValueAtTime(melVol * masterVolume, now);
         melodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
@@ -251,7 +251,6 @@ function startBGM() {
           bassOsc.type = "triangle";
           bassOsc.frequency.setValueAtTime(bassFreq, now);
 
-          // 🥁 বেইসের ভলিউম বাড়ানো হয়েছে
           bassGain.gain.setValueAtTime(0.12 * masterVolume, now);
           bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
 
@@ -299,7 +298,6 @@ function playSound(type, intensity = 1) {
       osc.frequency.setValueAtTime(pitch, now);
       osc.frequency.exponentialRampToValueAtTime(110, now + 0.03);
       
-      // 🔉 বাউন্স সাউন্ড ইফেক্ট হালকা কমানো হয়েছে
       const vol = Math.min(0.024, (0.005 + intensity * 0.005) * masterVolume);
       gain.gain.setValueAtTime(vol, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.032);
@@ -318,7 +316,6 @@ function playSound(type, intensity = 1) {
       osc.frequency.exponentialRampToValueAtTime(750, now + 0.045);
       osc.frequency.exponentialRampToValueAtTime(120, now + 0.14);
       
-      // 🔉 আউট সাউন্ড ইফেক্ট হালকা কমানো হয়েছে
       const outVol = Math.min(0.14, 0.10 * masterVolume);
       gain.gain.setValueAtTime(outVol, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
@@ -563,26 +560,28 @@ function resizeCanvas() {
 
   arenaX = viewWidth / 2;
 
-  const itemWidth = 20;
+  const itemWidth = selectedDeviceMode === 'tablet' ? 18 : 20;
   const itemsPerRow = Math.max(10, Math.floor((viewWidth - 20) / itemWidth));
-  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 10;
+  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + (itemWidth / 2);
   
   const totalDeadRows = Math.ceil(TOTAL_FLAGS / itemsPerRow);
-  const deadFlagsHeight = totalDeadRows * 14 + 8;
+  const deadFlagsHeight = totalDeadRows * (selectedDeviceMode === 'tablet' ? 13 : 14) + 6;
 
-  const topPadding = 10; 
-  const bottomReserved = deadFlagsHeight + 36;
-  const usableH = Math.max(180, viewHeight - topPadding - bottomReserved);
+  const topPadding = selectedDeviceMode === 'tablet' ? 6 : 10; 
+  const bottomReserved = deadFlagsHeight + (selectedDeviceMode === 'tablet' ? 32 : 36);
+  const usableH = Math.max(160, viewHeight - topPadding - bottomReserved);
 
-  arenaR = Math.min((viewWidth - 20) / 2, usableH / 2);
-  arenaY = topPadding + (usableH / 2);
+  // ট্যাবলেটে রিং সাইজ বড়, পিসি/মোবাইলে ব্যালেন্সড
+  const ringScale = selectedDeviceMode === 'tablet' ? 0.98 : 0.94;
+  arenaR = Math.min((viewWidth - 20) / 2, usableH / 2) * ringScale;
+  arenaY = topPadding + arenaR + 4;
 
   for (let i = 0; i < deadFlags.length; i++) {
     const flag = deadFlags[i];
     const col = i % itemsPerRow;
     const row = Math.floor(i / itemsPerRow);
     flag.targetX = startX + col * itemWidth;
-    flag.targetY = viewHeight - 8 - (row * 14);
+    flag.targetY = viewHeight - 6 - (row * (selectedDeviceMode === 'tablet' ? 13 : 14));
     if (flag.settled) {
       flag.x = flag.targetX;
       flag.y = flag.targetY;
@@ -662,6 +661,29 @@ function renderFinalStandings() {
   els.qualifiedList.innerHTML = rowsHtml;
 }
 
+function renderEliminatedList() {
+  if (!els.eliminatedList) return;
+  if (deadFlags.length === 0) {
+    els.eliminatedList.innerHTML = `
+      <div class="elim-row" style="justify-content:center; opacity:0.5; border:none; background:transparent; font-size:10px;">
+        No flags out yet
+      </div>`;
+    return;
+  }
+  
+  let html = "";
+  for (let i = deadFlags.length - 1; i >= 0; i--) {
+    const f = deadFlags[i];
+    html += `
+      <div class="elim-row">
+        <span class="elim-flag">${f.emoji}</span>
+        <span class="elim-name">${f.name}</span>
+      </div>
+    `;
+  }
+  els.eliminatedList.innerHTML = html;
+}
+
 function initGame() {
   flags.length = 0;
   deadFlags.length = 0;
@@ -727,6 +749,7 @@ function initGame() {
   } else {
     renderLeaderboard();
   }
+  renderEliminatedList();
   updateRoundFooterInfo(0);
 }
 
@@ -741,7 +764,6 @@ function isAngleBetween(target, start, end) {
   return target >= start || target <= end;
 }
 
-// ❌ টপ ১০ নকআউট অ্যানাউন্সমেন্ট ওভারলে
 function showKnockoutOverlay(flag) {
   isPlaying = false;
   stopBGM();
@@ -777,7 +799,6 @@ function showKnockoutOverlay(flag) {
   }, 2400);
 }
 
-// 🎖️ ৩য় ও ২য় স্থান সেলিব্রেশন ওভারলে
 function showMedalOverlay(flag, titleText, speechRank, callback) {
   isPlaying = false;
   stopBGM();
@@ -828,17 +849,18 @@ function eliminate(flag) {
   activeFlags = activeFlags.filter(f => f.id !== flag.id);
   
   const slotIndex = deadFlags.length;
-  const itemWidth = 20;
+  const itemWidth = selectedDeviceMode === 'tablet' ? 18 : 20;
   const itemsPerRow = Math.max(10, Math.floor((viewWidth - 20) / itemWidth));
   const col = slotIndex % itemsPerRow;
   const row = Math.floor(slotIndex / itemsPerRow);
   
-  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + 10;
+  const startX = (viewWidth - (itemsPerRow * itemWidth)) / 2 + (itemWidth / 2);
   flag.targetX = startX + col * itemWidth;
-  flag.targetY = viewHeight - 8 - (row * 14);
+  flag.targetY = viewHeight - 6 - (row * (selectedDeviceMode === 'tablet' ? 13 : 14));
   flag.settled = false;
 
   deadFlags.push(flag); 
+  renderEliminatedList();
   
   if (isFinalRound) {
     renderFinalStandings();
@@ -868,7 +890,6 @@ function eliminate(flag) {
   }
 }
 
-// 🎉 কনফেটি সেলিব্রেশন সিস্টেম
 function startCelebrationConfetti() {
   if (!confettiCtx) return;
   confettiParticles = [];
@@ -959,7 +980,6 @@ function declareWinner(flag) {
     isPlaying = false;
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
-    // 🏆 গ্র্যান্ড ফাইনাল বিজয়ী
     if (isFinalRound) {
       podiumPlaces.first = flag;
 
@@ -995,7 +1015,6 @@ function declareWinner(flag) {
       return; 
     }
 
-    // 🎖️ সাধারণ কোয়ালিফাইং রাউন্ড
     playSound("win");
     speakWinner(flag.name, round);
     if (els.winnerHeading) {
@@ -1203,7 +1222,6 @@ function resolveAllCollisions(list, pushFactor, resolveVelocity) {
   });
 }
 
-// 💥 শক্তিশালী ইমপ্যাক্ট বাউন্স
 function bounceFlag(f, dx, dy, dist) {
   let nx = dx / dist;
   let ny = dy / dist;
@@ -1388,7 +1406,7 @@ function gameLoop() {
   let fullLineWidth = arenaR * 1.6; 
   let lineStartX = arenaX - (fullLineWidth / 2); 
   let currentLineWidth = fullLineWidth * flagRatio;
-  let lineY = arenaY + arenaR + 14; 
+  let lineY = arenaY + arenaR + 12; 
 
   ctx.beginPath();
   ctx.moveTo(lineStartX, lineY);
@@ -1411,19 +1429,19 @@ function gameLoop() {
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 7);
+  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 6);
 
   // 🎨 ইমোজি রেন্ডারিং
   ctx.globalAlpha = 0.85; 
   for (let i = 0; i < deadFlags.length; i++) {
       let f = deadFlags[i];
-      drawFlagEmoji(ctx, f.emoji, f.x, f.y, 14);
+      drawFlagEmoji(ctx, f.emoji, f.x, f.y, 13);
   }
 
   ctx.globalAlpha = 1.0;
   for (let i = 0; i < activeFlags.length; i++) {
       let f = activeFlags[i];
-      drawFlagEmoji(ctx, f.emoji, f.x, f.y, 23);
+      drawFlagEmoji(ctx, f.emoji, f.x, f.y, 22);
   }
 
   // 🌟 ৫. রাউন্ড ব্যানার টেক্সট
