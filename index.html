@@ -50,7 +50,7 @@
           <option value="custom">🔗 Custom GitHub / Direct MP3 Link</option>
         </select>
 
-        <!-- কাস্টম লিঙ্ক ইনপুট বক্স (GitHub / MP3) -->
+        <!-- কাস্টম লিঙ্ক ইনপুট বক্স -->
         <div id="customMusicInputWrapper" class="custom-music-wrapper hidden">
           <input type="text" id="customBgmUrl" class="custom-music-input" placeholder="Paste GitHub raw or direct .mp3 link..." />
         </div>
@@ -58,8 +58,8 @@
         <!-- 🔊 ভলিউম কন্ট্রোল স্লাইডার -->
         <div class="volume-slider-row">
           <span class="vol-icon">🔊 VOLUME:</span>
-          <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.7" oninput="changeVolume(this.value)" />
-          <span id="volumeValueText" class="vol-percent">70%</span>
+          <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.85" oninput="changeVolume(this.value)" />
+          <span id="volumeValueText" class="vol-percent">85%</span>
         </div>
       </div>
 
@@ -85,55 +85,63 @@
       </div>
     </header>
 
-    <div class="qualified-board">
-      <div class="board-title" id="boardHeading">QUALIFIED FOR FINAL</div>
-      <div class="board-list" id="qualifiedList"></div>
-      
-      <!-- ⏱️ বোর্ডের নিচের প্রোগ্রেস ও রিভার্স কাউন্টডাউন বার -->
-      <div class="board-footer">
-        <span class="rounds-status" id="roundProgressText">ROUNDS: 1 / 60</span>
-        <span class="final-countdown" id="finalCountdownText">FINAL IN: 45:00</span>
-      </div>
-    </div>
-
-    <div class="arena-container">
-      <canvas id="arena"></canvas>
-      
-      <!-- Winner & Grand Final Podium Overlay -->
-      <div id="winnerOverlay" class="winner-overlay hidden">
-        <canvas id="confettiCanvas"></canvas>
-
-        <div class="round-winner-text" id="winnerHeading">ROUND WINNER</div>
-        <div class="winner-flag-box" id="winnerFlagBox">🏳️</div>
-        <div class="winner-name" id="winnerName">Country</div>
-
-        <div id="podiumContainer" class="podium-container hidden">
-          <div class="celebration-badge">🎊 GRAND CELEBRATION 🎊</div>
-          
-          <div class="podium-card gold">
-            <span class="podium-badge">👑 1ST PLACE - CHAMPION 👑</span>
-            <div class="podium-flag" id="podium1Flag">🏳️</div>
-            <div class="podium-name" id="podium1Name">Winner</div>
-          </div>
-          
-          <div class="podium-sub-grid">
-            <div class="podium-card silver">
-              <span class="podium-badge">🥈 2ND PLACE</span>
-              <div class="podium-flag" id="podium2Flag">🏳️</div>
-              <div class="podium-name" id="podium2Name">Runner Up</div>
-            </div>
-            <div class="podium-card bronze">
-              <span class="podium-badge">🥉 3RD PLACE</span>
-              <div class="podium-flag" id="podium3Flag">🏳️</div>
-              <div class="podium-name" id="podium3Name">3rd Place</div>
-            </div>
-          </div>
-
-          <!-- 🔄 রিস্টার্ট বাটন -->
-          <button class="start-battle-btn" style="margin-top: 14px; padding: 10px 22px; font-size: 13px;" onclick="restartTournament()">
-            🔄 PLAY AGAIN
-          </button>
+    <div class="game-content-layout">
+      <!-- 🏆 Left Side: Qualified Board -->
+      <div class="qualified-board">
+        <div class="board-title" id="boardHeading">QUALIFIED FOR FINAL</div>
+        <div class="board-list" id="qualifiedList"></div>
+        
+        <div class="board-footer">
+          <span class="rounds-status" id="roundProgressText">ROUNDS: 1 / 60</span>
+          <span class="final-countdown" id="finalCountdownText">FINAL IN: 45:00</span>
         </div>
+      </div>
+
+      <!-- ⚔️ Center: Arena Ring -->
+      <div class="arena-container">
+        <canvas id="arena"></canvas>
+        
+        <!-- Winner & Grand Final Podium Overlay -->
+        <div id="winnerOverlay" class="winner-overlay hidden">
+          <canvas id="confettiCanvas"></canvas>
+
+          <div class="round-winner-text" id="winnerHeading">ROUND WINNER</div>
+          <div class="winner-flag-box" id="winnerFlagBox">🏳️</div>
+          <div class="winner-name" id="winnerName">Country</div>
+
+          <div id="podiumContainer" class="podium-container hidden">
+            <div class="celebration-badge">🎊 GRAND CELEBRATION 🎊</div>
+            
+            <div class="podium-card gold">
+              <span class="podium-badge">👑 1ST PLACE - CHAMPION 👑</span>
+              <div class="podium-flag" id="podium1Flag">🏳️</div>
+              <div class="podium-name" id="podium1Name">Winner</div>
+            </div>
+            
+            <div class="podium-sub-grid">
+              <div class="podium-card silver">
+                <span class="podium-badge">🥈 2ND PLACE</span>
+                <div class="podium-flag" id="podium2Flag">🏳️</div>
+                <div class="podium-name" id="podium2Name">Runner Up</div>
+              </div>
+              <div class="podium-card bronze">
+                <span class="podium-badge">🥉 3RD PLACE</span>
+                <div class="podium-flag" id="podium3Flag">🏳️</div>
+                <div class="podium-name" id="podium3Name">3rd Place</div>
+              </div>
+            </div>
+
+            <button class="start-battle-btn" style="margin-top: 14px; padding: 10px 22px; font-size: 13px;" onclick="restartTournament()">
+              🔄 PLAY AGAIN
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ❌ Right Side: Eliminated List (শুধুমাত্র ট্যাবলেট মোডে দৃশ্যমান) -->
+      <div class="eliminated-board" id="eliminatedBoard">
+        <div class="board-title">ELIMINATED</div>
+        <div class="eliminated-list" id="eliminatedList"></div>
       </div>
     </div>
   </div>
