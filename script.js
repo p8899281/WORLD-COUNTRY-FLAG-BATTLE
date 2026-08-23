@@ -123,7 +123,7 @@ function formatDirectUrl(url) {
 }
 
 function handleBgmSelectChange() {
-  const selected = els.bgmSelect ? els.bgmSelect.value : 'synth';
+  const selected = els.bgmSelect ? els.bgmSelect.value : 'suspense';
   if (els.customMusicInputWrapper) {
     if (selected === 'custom') {
       els.customMusicInputWrapper.classList.remove('hidden');
@@ -147,7 +147,26 @@ function changeVolume(val) {
 let bgmInterval = null;
 let bgmStep = 0;
 
+// 🎶 সাসপেন্স ও থ্রিলার ব্যাকগ্রাউন্ড ট্র্যাকসমূহ
 const musicTracks = {
+  suspense: {
+    notes: [220.00, 233.08, 220.00, 207.65, 220.00, 246.94, 233.08, 220.00, 174.61, 185.00, 174.61, 220.00, 207.65, 233.08, 246.94, 220.00],
+    bass: [55.00, 55.00, 58.27, 58.27, 51.91, 51.91, 55.00, 55.00],
+    speed: 105,
+    type: "triangle"
+  },
+  countdown: {
+    notes: [440.00, 440.00, 466.16, 440.00, 523.25, 466.16, 440.00, 392.00, 440.00, 440.00, 587.33, 523.25, 466.16, 440.00, 415.30, 440.00],
+    bass: [110.00, 110.00, 116.54, 110.00, 130.81, 116.54, 110.00, 103.83],
+    speed: 90,
+    type: "square"
+  },
+  mystery: {
+    notes: [293.66, 311.13, 349.23, 311.13, 293.66, 277.18, 293.66, 329.63, 293.66, 349.23, 392.00, 349.23, 311.13, 293.66, 277.18, 261.63],
+    bass: [73.42, 73.42, 69.30, 69.30, 65.41, 65.41, 73.42, 73.42],
+    speed: 145,
+    type: "sine"
+  },
   synth: {
     notes: [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 880.00, 659.25, 587.33, 698.46, 880.00, 1174.66, 880.00, 698.46, 783.99, 659.25],
     bass: [261.63, 261.63, 220.00, 220.00, 174.61, 174.61, 196.00, 196.00],
@@ -208,7 +227,7 @@ async function requestDeviceFullscreen() {
 
 function startBGM() {
   stopBGM();
-  const selectedType = els.bgmSelect ? els.bgmSelect.value : 'synth';
+  const selectedType = els.bgmSelect ? els.bgmSelect.value : 'suspense';
 
   if (selectedType === 'custom') {
     let targetSrc = els.customBgmUrl ? formatDirectUrl(els.customBgmUrl.value) : '';
@@ -219,7 +238,7 @@ function startBGM() {
       customAudioPlayer.play().catch(() => {});
     }
   } else {
-    const track = musicTracks[selectedType] || musicTracks.synth;
+    const track = musicTracks[selectedType] || musicTracks.suspense;
     bgmStep = 0;
     
     bgmInterval = setInterval(() => {
@@ -571,7 +590,6 @@ function resizeCanvas() {
   const bottomReserved = deadFlagsHeight + (selectedDeviceMode === 'tablet' ? 32 : 36);
   const usableH = Math.max(160, viewHeight - topPadding - bottomReserved);
 
-  // ট্যাবলেটে রিং সাইজ বড়, পিসি/মোবাইলে ব্যালেন্সড
   const ringScale = selectedDeviceMode === 'tablet' ? 0.98 : 0.94;
   arenaR = Math.min((viewWidth - 20) / 2, usableH / 2) * ringScale;
   arenaY = topPadding + arenaR + 4;
