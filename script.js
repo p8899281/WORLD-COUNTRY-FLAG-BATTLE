@@ -147,7 +147,6 @@ function changeVolume(val) {
 let bgmInterval = null;
 let bgmStep = 0;
 
-// 🎶 সাসপেন্স ও থ্রিলার ব্যাকগ্রাউন্ড ট্র্যাকসমূহ
 const musicTracks = {
   suspense: {
     notes: [220.00, 233.08, 220.00, 207.65, 220.00, 246.94, 233.08, 220.00, 174.61, 185.00, 174.61, 220.00, 207.65, 233.08, 246.94, 220.00],
@@ -232,9 +231,11 @@ function startBGM() {
   if (selectedType === 'custom') {
     let targetSrc = els.customBgmUrl ? formatDirectUrl(els.customBgmUrl.value) : '';
     if (targetSrc) {
-      customAudioPlayer.src = targetSrc;
+      // লিঙ্ক পরিবর্তন না হলে গান প্রথম থেকে রিস্টার্ট হবে না, যেখান থেকে পজ হয়েছিল সেখান থেকে চলবে
+      if (!customAudioPlayer.src.includes(targetSrc)) {
+        customAudioPlayer.src = targetSrc;
+      }
       customAudioPlayer.volume = masterVolume;
-      customAudioPlayer.currentTime = 0;
       customAudioPlayer.play().catch(() => {});
     }
   } else {
@@ -296,8 +297,9 @@ function stopBGM() {
 }
 
 function playSound(type, intensity = 1) {
-  if (!audioCtx || !isPlaying) return;
+  if (!audioCtx) return;
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  if (type !== "win" && type !== "grand_fanfare" && !isPlaying) return;
   
   const nowTime = Date.now();
 
@@ -996,6 +998,7 @@ function stopCelebrationConfetti() {
 function declareWinner(flag) {
     if (!isPlaying && !isFinalRound) return;
     isPlaying = false;
+    stopBGM(); // 🛑 বিজয়ী ঘোষণার শুরুতেই ব্যাকগ্রাউন্ড মিউজিক বন্ধ হবে
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
     if (isFinalRound) {
@@ -1073,6 +1076,10 @@ function declareWinner(flag) {
 
 function restartTournament() {
   stopCelebrationConfetti();
+  stopBGM();
+  try {
+    customAudioPlayer.currentTime = 0;
+  } catch(e) {}
   if (els.winnerOverlay) els.winnerOverlay.classList.add("hidden");
   if (els.podiumContainer) els.podiumContainer.classList.add("hidden");
   if (els.app) els.app.classList.add("hidden");
