@@ -48,12 +48,11 @@ let yellowAngle = 0;
 const baseGapSize = Math.PI / 6.2;   
 const yellowSize = Math.PI / 5.0;    
 
-// 🌀 সাদা রিংয়ের গতি কমানো হয়েছে
 const whiteSpeed = 0.022; 
 const yellowSpeed = 0.048; 
 
-let arenaR = 0, arenaX = 0, arenaY = 0;
-let viewWidth = 0, viewHeight = 0;
+let arenaR = 120, arenaX = 180, arenaY = 250;
+let viewWidth = 360, viewHeight = 640;
 let dpr = 1;
 let isPlaying = false;
 let selectedDeviceMode = 'mobile';
@@ -76,7 +75,6 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
-// 🏆 কাস্টমাইজেবল রাউন্ড স্টেট
 let round = 1;
 let MAX_QUALIFYING_ROUNDS = 60; 
 let isFinalRound = false;
@@ -90,7 +88,6 @@ function setTournamentRounds(num, btnElement) {
   }
 }
 
-// 🎉 কনফেটি ও টাইমার হ্যান্ডলার
 let confettiParticles = [];
 let confettiAnimationId = null;
 let knockoutTimeout = null;
@@ -471,7 +468,6 @@ const countryData = [
 const countryList = countryData.map(([code, name]) => [code, name, codeToFlagEmoji(code)]);
 TOTAL_FLAGS = countryList.length;
 
-// 🚀 EMOJI SPRITE CACHE
 const EMOJI_SPRITE_SCALE = 3; 
 const emojiSpriteCache = new Map();
 
@@ -506,8 +502,8 @@ function drawFlagEmoji(targetCtx, emoji, x, y, fontSizePx) {
 function preloadEmojiSprites() {
   for (let i = 0; i < countryList.length; i++) {
     const emoji = countryList[i][2];
-    getEmojiSprite(emoji, 23);
-    getEmojiSprite(emoji, 14);
+    getEmojiSprite(emoji, 22);
+    getEmojiSprite(emoji, 13);
   }
 }
 preloadEmojiSprites();
@@ -532,17 +528,12 @@ function beginBattle() {
   if (els.startScreen) els.startScreen.classList.add("hidden");
   if (els.app) els.app.classList.remove("hidden");
   
-  resizeCanvas();
-  if (!resizeListenerAttached) {
-    window.addEventListener("resize", resizeCanvas);
-    resizeListenerAttached = true;
-  }
-  
   round = 1;
   isFinalRound = false;
   qualifiedTeams = [];
   podiumPlaces = { first: null, second: null, third: null };
 
+  resizeCanvas();
   initGame();
   startLeaderboardAutoCycle();
   updateRoundFooterInfo(0);
@@ -550,30 +541,38 @@ function beginBattle() {
   isPlaying = true;
   startBGM(); 
   requestAnimationFrame(gameLoop);
+
+  if (!resizeListenerAttached) {
+    window.addEventListener("resize", () => {
+      resizeCanvas();
+    });
+    window.addEventListener("orientationchange", () => {
+      setTimeout(resizeCanvas, 150);
+    });
+    resizeListenerAttached = true;
+  }
 }
 
 function resizeCanvas() {
   if (!canvas) return;
-  const rect = canvas.parentElement.getBoundingClientRect();
-  viewWidth = rect.width;
-  viewHeight = rect.height;
+  const container = document.querySelector(".arena-container");
+  const rect = container ? container.getBoundingClientRect() : null;
   
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  viewWidth = Math.floor(rect && rect.width > 30 ? rect.width : window.innerWidth);
+  viewHeight = Math.floor(rect && rect.height > 30 ? rect.height : window.innerHeight);
   
-  canvas.width = Math.floor(viewWidth * dpr);
-  canvas.height = Math.floor(viewHeight * dpr);
+  dpr = 1; 
+  
+  canvas.width = viewWidth;
+  canvas.height = viewHeight;
+  canvas.style.width = viewWidth + "px";
+  canvas.style.height = viewHeight + "px";
   
   if (confettiCanvas) {
-    confettiCanvas.width = Math.floor(viewWidth * dpr);
-    confettiCanvas.height = Math.floor(viewHeight * dpr);
-  }
-  
-  ctx.resetTransform();
-  ctx.scale(dpr, dpr);
-
-  if (confettiCtx) {
-    confettiCtx.resetTransform();
-    confettiCtx.scale(dpr, dpr);
+    confettiCanvas.width = viewWidth;
+    confettiCanvas.height = viewHeight;
+    confettiCanvas.style.width = viewWidth + "px";
+    confettiCanvas.style.height = viewHeight + "px";
   }
 
   ctx.imageSmoothingEnabled = true;
@@ -593,7 +592,7 @@ function resizeCanvas() {
   const usableH = Math.max(160, viewHeight - topPadding - bottomReserved);
 
   const ringScale = selectedDeviceMode === 'tablet' ? 0.98 : 0.94;
-  arenaR = Math.min((viewWidth - 20) / 2, usableH / 2) * ringScale;
+  arenaR = Math.max(50, Math.min((viewWidth - 20) / 2, usableH / 2) * ringScale);
   arenaY = topPadding + arenaR + 4;
 
   for (let i = 0; i < deadFlags.length; i++) {
@@ -785,6 +784,7 @@ function isAngleBetween(target, start, end) {
 }
 
 function showKnockoutOverlay(flag) {
+  if (!flag) return;
   isPlaying = false;
   stopBGM();
   if (knockoutTimeout) clearTimeout(knockoutTimeout);
@@ -820,6 +820,7 @@ function showKnockoutOverlay(flag) {
 }
 
 function showMedalOverlay(flag, titleText, speechRank, callback) {
+  if (!flag) return;
   isPlaying = false;
   stopBGM();
   if (knockoutTimeout) clearTimeout(knockoutTimeout);
@@ -862,7 +863,7 @@ function showMedalOverlay(flag, titleText, speechRank, callback) {
 }
 
 function eliminate(flag) {
-  if (!flag.active) return;
+  if (!flag || !flag.active) return;
   flag.active = false;
   playSound("out");
   
@@ -894,7 +895,9 @@ function eliminate(flag) {
     if (activeFlags.length === 1) {
       podiumPlaces.second = flag;
       showMedalOverlay(flag, "🥈 2ND PLACE - RUNNER UP 🥈", "2nd place silver medal", () => {
-        declareWinner(activeFlags[0]);
+        if (activeFlags.length > 0) {
+          declareWinner(activeFlags[0]);
+        }
       });
       return;
     }
@@ -996,6 +999,7 @@ function stopCelebrationConfetti() {
 }
 
 function declareWinner(flag) {
+    if (!flag) return;
     if (!isPlaying && !isFinalRound) return;
     isPlaying = false;
     stopBGM();
@@ -1091,6 +1095,7 @@ function restartTournament() {
 }
 
 function recordQualifier(flag) {
+  if (!flag) return;
   let entry = qualifiedTeams.find(t => t.code === flag.code);
   if (entry) {
     entry.wins++;
@@ -1238,7 +1243,7 @@ function resolveAllCollisions(list, pushFactor, resolveVelocity) {
         const neighborCell = collisionGrid.get((col + dx) + "_" + (row + dy));
         if (!neighborCell) continue;
         for (let i = 0; i < cellFlags.length; i++) {
-          for (let j = i + 1; j < cellFlags.length; j++) {
+          for (let j = 0; j < neighborCell.length; j++) {
             resolveCollisionPair(cellFlags[i], neighborCell[j], pushFactor, resolveVelocity);
           }
         }
@@ -1280,239 +1285,239 @@ function bounceFlag(f, dx, dy, dist) {
 
 function gameLoop() {
   if (!isPlaying || !ctx) return;
-  
-  ctx.fillStyle = "#020c06";
-  ctx.fillRect(0, 0, viewWidth, viewHeight);
 
-  // -------------------------------------------------------------
-  // ⚡ ১. ওয়ার্ম-আপ ফেজ
-  // -------------------------------------------------------------
-  if (isWarmup) {
-    let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
-    let mins = Math.floor(roundDuration / 60);
-    let secs = Math.floor(roundDuration % 60);
-    if (els.timerText) els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    updateRoundFooterInfo(0);
+  try {
+    ctx.fillStyle = "#020c06";
+    ctx.fillRect(0, 0, viewWidth, viewHeight);
 
-    ctx.beginPath();
-    ctx.arc(arenaX, arenaY, arenaR, 0, Math.PI * 2);
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = "#ffffff";
-    ctx.stroke();
+    // ⚡ ১. ওয়ার্ম-আপ ফেজ
+    if (isWarmup) {
+      let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
+      let mins = Math.floor(roundDuration / 60);
+      let secs = Math.floor(roundDuration % 60);
+      if (els.timerText) els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
+      updateRoundFooterInfo(0);
 
-    resolveAllCollisions(activeFlags, 0.45, false);
+      ctx.beginPath();
+      ctx.arc(arenaX, arenaY, arenaR, 0, Math.PI * 2);
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
 
-    for (let i = activeFlags.length - 1; i >= 0; i--) {
-      let f = activeFlags[i];
-      let jitterX = (Math.random() - 0.5) * 1.2;
-      let jitterY = (Math.random() - 0.5) * 1.2;
+      resolveAllCollisions(activeFlags, 0.45, false);
 
-      f.x += f.vx * 0.65 + jitterX;
-      f.y += f.vy * 0.65 + jitterY;
+      for (let i = activeFlags.length - 1; i >= 0; i--) {
+        let f = activeFlags[i];
+        let jitterX = (Math.random() - 0.5) * 1.2;
+        let jitterY = (Math.random() - 0.5) * 1.2;
 
-      let dx = f.x - arenaX;
-      let dy = f.y - arenaY;
-      let dist = Math.hypot(dx, dy) || 1;
+        f.x += f.vx * 0.65 + jitterX;
+        f.y += f.vy * 0.65 + jitterY;
 
-      if (dist > arenaR - f.r) {
-        bounceFlag(f, dx, dy, dist);
-      }
-    }
+        let dx = f.x - arenaX;
+        let dy = f.y - arenaY;
+        let dist = Math.hypot(dx, dy) || 1;
 
-    if (warmupElapsed >= warmupDuration) {
-      isWarmup = false;
-      startTime = Date.now();
-    }
-  } 
-  // -------------------------------------------------------------
-  // ⚔️ ২. মূল লড়াই ফেজ
-  // -------------------------------------------------------------
-  else {
-    let elapsed = (Date.now() - startTime) / 1000;
-    let timeLeft = Math.max(0, roundDuration - elapsed);
-    
-    let mins = Math.floor(timeLeft / 60);
-    let secs = Math.floor(timeLeft % 60);
-    if (els.timerText) els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
-
-    updateRoundFooterInfo(elapsed);
-
-    let progressRatio = Math.min(1, elapsed / roundDuration);
-
-    let activeGapSize = baseGapSize * (1 + Math.pow(progressRatio, 1.8) * 1.6);
-    let speedMult = 1.0 + Math.pow(progressRatio, 1.4) * 0.4;
-
-    if (timeLeft <= 3.0 && activeFlags.length > 1) {
-      activeGapSize = Math.PI * 0.8;
-      speedMult = 1.6;
-    }
-
-    // সাদা রিং ক্লকওয়াইজ (সোজা) ঘুরবে
-    whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progressRatio * 0.25));
-    // 🔄 নীল রিং কাউন্টার-ক্লকওয়াইজ (উল্টো দিকে) ঘুরবে
-    yellowAngle = normalizeAngle(yellowAngle - yellowSpeed * (1 + progressRatio * 0.25));
-    
-    let gStart = whiteAngle;
-    let gEnd = normalizeAngle(whiteAngle + activeGapSize);
-    
-    let yStart = yellowAngle;
-    let yEnd = normalizeAngle(yellowAngle + yellowSize);
-
-    resolveAllCollisions(activeFlags, 0.45, true);
-
-    for (let i = activeFlags.length - 1; i >= 0; i--) {
-      let f = activeFlags[i];
-      if (!f) continue;
-
-      let dx = f.x - arenaX;
-      let dy = f.y - arenaY;
-      let dist = Math.hypot(dx, dy) || 1;
-      
-      let currentV = Math.hypot(f.vx, f.vy);
-      if (currentV > 16.0) {
-        f.vx = (f.vx / currentV) * 16.0;
-        f.vy = (f.vy / currentV) * 16.0;
-      }
-
-      f.x += f.vx * speedMult;
-      f.y += f.vy * speedMult;
-      
-      if (dist > arenaR - f.r) {
-        let fAngle = normalizeAngle(Math.atan2(dy, dx));
-        let inGap = isAngleBetween(fAngle, gStart, gEnd);
-
-        if (inGap) {
-            let inYellow = isAngleBetween(fAngle, yStart, yEnd);
-            if (inYellow) {
-                bounceFlag(f, dx, dy, dist); 
-            } else {
-                if (dist > arenaR + f.r + 4) {
-                    eliminate(f); 
-                }
-            }
-        } else {
-            bounceFlag(f, dx, dy, dist); 
+        if (dist > arenaR - f.r) {
+          bounceFlag(f, dx, dy, dist);
         }
       }
-    }
 
-    // ১. সাদা রিং
-    ctx.beginPath();
-    ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "#ffffff";
-    ctx.stroke();
-    
-    // ২. নীল নিয়ন আর্চ (থিকনেস ৯px করা হয়েছে)
-    ctx.beginPath();
-    ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
-    ctx.lineWidth = 9;
-    ctx.strokeStyle = "#00d2ff";
-    ctx.stroke();
-  }
-
-  // নিচে ডেড ফ্ল্যাগ সাজানো
-  for (let i = 0; i < deadFlags.length; i++) {
-      let f = deadFlags[i];
-      if (!f.settled) {
-          f.x += (f.targetX - f.x) * 0.18;
-          f.y += (f.targetY - f.y) * 0.18;
-
-          let dx = f.targetX - f.x;
-          let dy = f.targetY - f.y;
-          if (dx * dx + dy * dy < 0.5) {
-              f.x = f.targetX;
-              f.y = f.targetY;
-              f.settled = true;
-          }
+      if (warmupElapsed >= warmupDuration) {
+        isWarmup = false;
+        startTime = Date.now();
       }
-  }
+    } 
+    // ⚔️ ২. মূল লড়াই ফেজ
+    else {
+      let elapsed = (Date.now() - startTime) / 1000;
+      let timeLeft = Math.max(0, roundDuration - elapsed);
+      
+      let mins = Math.floor(timeLeft / 60);
+      let secs = Math.floor(timeLeft % 60);
+      if (els.timerText) els.timerText.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
 
-  // 🟡 ৩. গোল্ডেন প্রোগ্রেস লাইন
-  let flagRatio = activeFlags.length / TOTAL_FLAGS;
-  let fullLineWidth = arenaR * 1.6; 
-  let lineStartX = arenaX - (fullLineWidth / 2); 
-  let currentLineWidth = fullLineWidth * flagRatio;
-  let lineY = arenaY + arenaR + 12; 
+      updateRoundFooterInfo(elapsed);
 
-  ctx.beginPath();
-  ctx.moveTo(lineStartX, lineY);
-  ctx.lineTo(lineStartX + fullLineWidth, lineY);
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-  ctx.lineCap = "round";
-  ctx.stroke();
+      let progressRatio = Math.min(1, elapsed / roundDuration);
 
-  ctx.beginPath();
-  ctx.moveTo(lineStartX, lineY);
-  ctx.lineTo(lineStartX + currentLineWidth, lineY);
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = "#ffd700";
-  ctx.lineCap = "round";
-  ctx.stroke();
+      let activeGapSize = baseGapSize * (1 + Math.pow(progressRatio, 1.8) * 1.6);
+      let speedMult = 1.0 + Math.pow(progressRatio, 1.4) * 0.4;
 
-  // 🏷️ ৪. কাউন্টার টেক্সট
-  ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 6);
+      if (timeLeft <= 3.0 && activeFlags.length > 1) {
+        activeGapSize = Math.PI * 0.8;
+        speedMult = 1.6;
+      }
 
-  // 🎨 ইমোজি রেন্ডারিং
-  ctx.globalAlpha = 0.85; 
-  for (let i = 0; i < deadFlags.length; i++) {
-      let f = deadFlags[i];
-      drawFlagEmoji(ctx, f.emoji, f.x, f.y, 13);
-  }
+      whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progressRatio * 0.25));
+      yellowAngle = normalizeAngle(yellowAngle - yellowSpeed * (1 + progressRatio * 0.25));
+      
+      let gStart = whiteAngle;
+      let gEnd = normalizeAngle(whiteAngle + activeGapSize);
+      
+      let yStart = yellowAngle;
+      let yEnd = normalizeAngle(yellowAngle + yellowSize);
 
-  ctx.globalAlpha = 1.0;
-  for (let i = 0; i < activeFlags.length; i++) {
-      let f = activeFlags[i];
-      drawFlagEmoji(ctx, f.emoji, f.x, f.y, 22);
-  }
+      resolveAllCollisions(activeFlags, 0.45, true);
 
-  // 🌟 ৫. রাউন্ড ব্যানার টেক্সট
-  if (isWarmup) {
-    let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
-    let alpha = 1;
-    if (warmupElapsed > 1.4) {
-      alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.6);
-    }
+      for (let i = activeFlags.length - 1; i >= 0; i--) {
+        let f = activeFlags[i];
+        if (!f) continue;
 
-    ctx.save();
-    ctx.globalAlpha = alpha;
+        let dx = f.x - arenaX;
+        let dy = f.y - arenaY;
+        let dist = Math.hypot(dx, dy) || 1;
+        
+        let currentV = Math.hypot(f.vx, f.vy);
+        if (currentV > 16.0) {
+          f.vx = (f.vx / currentV) * 16.0;
+          f.vy = (f.vy / currentV) * 16.0;
+        }
 
-    let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
-    ctx.font = "900 24px system-ui, -apple-system, sans-serif";
-    let textMetrics = ctx.measureText(roundBannerText);
-    let bgWidth = textMetrics.width + 48;
-    let bgHeight = 46;
+        f.x += f.vx * speedMult;
+        f.y += f.vy * speedMult;
+        
+        if (dist > arenaR - f.r) {
+          let fAngle = normalizeAngle(Math.atan2(dy, dx));
+          let inGap = isAngleBetween(fAngle, gStart, gEnd);
 
-    ctx.fillStyle = "rgba(3, 8, 20, 0.94)";
-    ctx.strokeStyle = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.shadowBlur = 18;
+          if (inGap) {
+              let inYellow = isAngleBetween(fAngle, yStart, yEnd);
+              if (inYellow) {
+                  bounceFlag(f, dx, dy, dist); 
+              } else {
+                  if (dist > arenaR + f.r + 4) {
+                      eliminate(f); 
+                  }
+              }
+          } else {
+              bounceFlag(f, dx, dy, dist); 
+          }
+        }
+      }
 
-    if (ctx.roundRect) {
+      // ১. সাদা রিং
       ctx.beginPath();
-      ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
-      ctx.fill();
+      ctx.arc(arenaX, arenaY, arenaR, gEnd, gStart);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#ffffff";
       ctx.stroke();
-    } else {
-      ctx.fillRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
-      ctx.strokeRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
+      
+      // ২. নীল নিয়ন আর্চ (৯px থিকনেস)
+      ctx.beginPath();
+      ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
+      ctx.lineWidth = 9;
+      ctx.strokeStyle = "#00d2ff";
+      ctx.stroke();
     }
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
-    ctx.fillText(roundBannerText, arenaX, arenaY);
+    // নিচে ডেড ফ্ল্যাগ সাজানো
+    for (let i = 0; i < deadFlags.length; i++) {
+        let f = deadFlags[i];
+        if (!f.settled) {
+            f.x += (f.targetX - f.x) * 0.18;
+            f.y += (f.targetY - f.y) * 0.18;
 
-    ctx.restore();
+            let dx = f.targetX - f.x;
+            let dy = f.targetY - f.y;
+            if (dx * dx + dy * dy < 0.5) {
+                f.x = f.targetX;
+                f.y = f.targetY;
+                f.settled = true;
+            }
+        }
+    }
+
+    // 🟡 ৩. গোল্ডেন প্রোগ্রেস লাইন
+    let flagRatio = activeFlags.length / TOTAL_FLAGS;
+    let fullLineWidth = arenaR * 1.6; 
+    let lineStartX = arenaX - (fullLineWidth / 2); 
+    let currentLineWidth = fullLineWidth * flagRatio;
+    let lineY = arenaY + arenaR + 12; 
+
+    ctx.beginPath();
+    ctx.moveTo(lineStartX, lineY);
+    ctx.lineTo(lineStartX + fullLineWidth, lineY);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(lineStartX, lineY);
+    ctx.lineTo(lineStartX + currentLineWidth, lineY);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#ffd700";
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    // 🏷️ ৪. কাউন্টার টেক্সট
+    ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText(`${activeFlags.length} / ${TOTAL_FLAGS} FLAGS`, arenaX, lineY + 6);
+
+    // 🎨 ইমোজি রেন্ডারিং
+    ctx.globalAlpha = 0.85; 
+    for (let i = 0; i < deadFlags.length; i++) {
+        let f = deadFlags[i];
+        drawFlagEmoji(ctx, f.emoji, f.x, f.y, 13);
+    }
+
+    ctx.globalAlpha = 1.0;
+    for (let i = 0; i < activeFlags.length; i++) {
+        let f = activeFlags[i];
+        drawFlagEmoji(ctx, f.emoji, f.x, f.y, 22);
+    }
+
+    // 🌟 ৫. রাউন্ড ব্যানার টেক্সট
+    if (isWarmup) {
+      let warmupElapsed = (Date.now() - warmupStartTime) / 1000;
+      let alpha = 1;
+      if (warmupElapsed > 1.4) {
+        alpha = Math.max(0, (warmupDuration - warmupElapsed) / 0.6);
+      }
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      let roundBannerText = isFinalRound ? "🏆 GRAND FINAL 🏆" : `⚔️ ROUND ${round} ⚔️`;
+      ctx.font = "900 24px system-ui, -apple-system, sans-serif";
+      let textMetrics = ctx.measureText(roundBannerText);
+      let bgWidth = textMetrics.width + 48;
+      let bgHeight = 46;
+
+      ctx.fillStyle = "rgba(3, 8, 20, 0.94)";
+      ctx.strokeStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = isFinalRound ? "#00d2ff" : "#ffd700";
+      ctx.shadowBlur = 18;
+
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight, 23);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
+        ctx.strokeRect(arenaX - bgWidth / 2, arenaY - bgHeight / 2, bgWidth, bgHeight);
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = isFinalRound ? "#00d2ff" : "#ffd700";
+      ctx.fillText(roundBannerText, arenaX, arenaY);
+
+      ctx.restore();
+    }
+  } catch (e) {
+    console.error("Game loop error:", e);
   }
   
-  requestAnimationFrame(gameLoop);
+  if (isPlaying) {
+    requestAnimationFrame(gameLoop);
+  }
 }
 
 // গ্লোবাল ফাংশন বাইন্ডিং
