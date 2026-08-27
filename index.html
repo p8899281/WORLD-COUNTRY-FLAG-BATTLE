@@ -27,7 +27,7 @@
       <h1 class="start-title">COUNTRY FLAGS BATTLE</h1>
       <div class="start-underline"></div>
       
-      <!-- 🔢 রাউন্ড সিলেক্টর (15, 30, 60, 90, 120) -->
+      <!-- 🔢 রাউন্ড সিলেক্টর -->
       <div class="rounds-selector-box">
         <div class="rounds-label">SELECT TOURNAMENT ROUNDS:</div>
         <div class="rounds-btn-group">
@@ -39,7 +39,7 @@
         </div>
       </div>
 
-      <!-- 🎵 ব্যাকগ্রাউন্ড মিউজিক ও সাউন্ড সেটিংস (সাসপেন্স মিউজিক অপশন সহ) -->
+      <!-- 🎵 ব্যাকগ্রাউন্ড মিউজিক সেটিংস -->
       <div class="music-settings-box">
         <div class="music-label">🎶 BACKGROUND MUSIC:</div>
         <select id="bgmSelect" class="bgm-dropdown" onchange="handleBgmSelectChange()">
@@ -53,12 +53,10 @@
           <option value="custom">🔗 Custom GitHub / Direct MP3 Link</option>
         </select>
 
-        <!-- কাস্টম লিঙ্ক ইনপুট বক্স -->
         <div id="customMusicInputWrapper" class="custom-music-wrapper hidden">
           <input type="text" id="customBgmUrl" class="custom-music-input" placeholder="Paste GitHub raw or direct .mp3 link..." />
         </div>
 
-        <!-- 🔊 ভলিউম কন্ট্রোল স্লাইডার -->
         <div class="volume-slider-row">
           <span class="vol-icon">🔊 VOLUME:</span>
           <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.85" oninput="changeVolume(this.value)" />
@@ -141,7 +139,7 @@
         </div>
       </div>
 
-      <!-- ❌ Right Side: Eliminated List (শুধুমাত্র ট্যাবলেট মোডে দৃশ্যমান) -->
+      <!-- ❌ Right Side: Eliminated List (শুধুমাত্র ট্যাবলেট মোডে) -->
       <div class="eliminated-board" id="eliminatedBoard">
         <div class="board-title">ELIMINATED</div>
         <div class="eliminated-list" id="eliminatedList"></div>
