@@ -48,8 +48,9 @@ let yellowAngle = 0;
 const baseGapSize = Math.PI / 6.2;   
 const yellowSize = Math.PI / 5.0;    
 
-const whiteSpeed = 0.035; 
-const yellowSpeed = 0.070; 
+// 🌀 সাদা রিংয়ের গতি কমানো হয়েছে
+const whiteSpeed = 0.022; 
+const yellowSpeed = 0.048; 
 
 let arenaR = 0, arenaX = 0, arenaY = 0;
 let viewWidth = 0, viewHeight = 0;
@@ -231,7 +232,6 @@ function startBGM() {
   if (selectedType === 'custom') {
     let targetSrc = els.customBgmUrl ? formatDirectUrl(els.customBgmUrl.value) : '';
     if (targetSrc) {
-      // লিঙ্ক পরিবর্তন না হলে গান প্রথম থেকে রিস্টার্ট হবে না, যেখান থেকে পজ হয়েছিল সেখান থেকে চলবে
       if (!customAudioPlayer.src.includes(targetSrc)) {
         customAudioPlayer.src = targetSrc;
       }
@@ -998,7 +998,7 @@ function stopCelebrationConfetti() {
 function declareWinner(flag) {
     if (!isPlaying && !isFinalRound) return;
     isPlaying = false;
-    stopBGM(); // 🛑 বিজয়ী ঘোষণার শুরুতেই ব্যাকগ্রাউন্ড মিউজিক বন্ধ হবে
+    stopBGM();
     if (knockoutTimeout) clearTimeout(knockoutTimeout);
     
     if (isFinalRound) {
@@ -1238,7 +1238,7 @@ function resolveAllCollisions(list, pushFactor, resolveVelocity) {
         const neighborCell = collisionGrid.get((col + dx) + "_" + (row + dy));
         if (!neighborCell) continue;
         for (let i = 0; i < cellFlags.length; i++) {
-          for (let j = 0; j < neighborCell.length; j++) {
+          for (let j = i + 1; j < cellFlags.length; j++) {
             resolveCollisionPair(cellFlags[i], neighborCell[j], pushFactor, resolveVelocity);
           }
         }
@@ -1347,8 +1347,10 @@ function gameLoop() {
       speedMult = 1.6;
     }
 
+    // সাদা রিং ক্লকওয়াইজ (সোজা) ঘুরবে
     whiteAngle = normalizeAngle(whiteAngle + whiteSpeed * (1 + progressRatio * 0.25));
-    yellowAngle = normalizeAngle(yellowAngle + yellowSpeed * (1 + progressRatio * 0.25));
+    // 🔄 নীল রিং কাউন্টার-ক্লকওয়াইজ (উল্টো দিকে) ঘুরবে
+    yellowAngle = normalizeAngle(yellowAngle - yellowSpeed * (1 + progressRatio * 0.25));
     
     let gStart = whiteAngle;
     let gEnd = normalizeAngle(whiteAngle + activeGapSize);
@@ -1401,10 +1403,10 @@ function gameLoop() {
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
     
-    // ২. নীল নিয়ন আর্চ
+    // ২. নীল নিয়ন আর্চ (থিকনেস ৯px করা হয়েছে)
     ctx.beginPath();
     ctx.arc(arenaX, arenaY, arenaR, yStart, yEnd);
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 9;
     ctx.strokeStyle = "#00d2ff";
     ctx.stroke();
   }
